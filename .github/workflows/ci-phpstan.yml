@@ -1,0 +1,49 @@
+name: check code
+
+on:
+  push:
+    paths:
+      - '**.php'
+      - 'phpcs.xml.dist'
+      - 'phpstan.neon'
+      - 'phpunit.xml'
+
+jobs:
+  phpstan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: php-actions/composer@v6
+      - uses: php-actions/phpstan@v3
+        with:
+          configuration: phpstan.neon
+  phpcs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Install PHP_CodeSniffer
+        run: |
+          curl -OL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar
+          php phpcs.phar --version
+      - uses: thenabeel/action-phpcs@v8
+        with:
+          files: '{src,tests}/**/*.php'
+          phpcs_path: php phpcs.phar
+          standard: phpcs.xml.dist
+          scope: file
+  phpunit:
+    needs: [phpstan, phpcs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: php-actions/composer@v6
+      - uses: php-actions/phpunit@v3
+        with:
+          configuration: phpunit.xml
+

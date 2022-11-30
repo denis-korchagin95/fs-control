@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<ruleset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/squizlabs/php_codesniffer/phpcs.xsd">
+
+    <config name="installed_paths" value="../../slevomat/coding-standard"/>
+
+    <arg name="basepath" value="."/>
+    <arg name="cache" value=".phpcs-cache"/>
+    <arg name="colors"/>
+    <arg name="extensions" value="php"/>
+
+    <rule ref="PSR12"/>
+
+    <!--
+        Another useful example of changing sniff settings is
+        to specify the end of line character that your standard
+        should check for.
+    -->
+    <rule ref="Generic.Files.LineEndings">
+        <properties>
+            <property name="eolChar" value="\n"/>
+        </properties>
+    </rule>
+
+    <!-- Don't hide tokenizer exceptions -->
+    <rule ref="Internal.Tokenizer.Exception">
+        <type>error</type>
+    </rule>
+
+    <!-- https://github.com/squizlabs/PHP_CodeSniffer/wiki/Customisable-Sniff-Properties#genericformattingspaceaftercast -->
+    <rule ref="Generic.Formatting.SpaceAfterCast">
+        <properties>
+            <property name="spacing" value="1"/>
+        </properties>
+    </rule>
+
+    <!-- https://github.com/squizlabs/PHP_CodeSniffer/wiki/Customisable-Sniff-Properties#genericformattingspaceafternot -->
+    <rule ref="Generic.Formatting.SpaceAfterNot">
+        <properties>
+            <property name="spacing" value="1"/>
+        </properties>
+    </rule>
+
+    <!-- https://github.com/squizlabs/PHP_CodeSniffer/wiki/Customisable-Sniff-Properties#squizstringsconcatenationspacing -->
+    <rule ref="Squiz.Strings.ConcatenationSpacing">
+        <properties>
+            <property name="spacing" value="1"/>
+            <property name="ignoreNewlines" value="true"/>
+        </properties>
+    </rule>
+
+    <!-- https://github.com/squizlabs/PHP_CodeSniffer/wiki/Customisable-Sniff-Properties#squizwhitespaceoperatorspacing -->
+    <rule ref="Squiz.WhiteSpace.OperatorSpacing">
+        <properties>
+            <property name="ignoreNewlines" value="true"/>
+        </properties>
+    </rule>
+
+    <!-- https://github.com/squizlabs/PHP_CodeSniffer/wiki/Customisable-Sniff-Properties#squizstringsconcatenationspacing -->
+    <rule ref="Squiz.Strings.ConcatenationSpacing">
+        <properties>
+            <property name="spacing" value="1"/>
+            <property name="ignoreNewlines" value="true"/>
+        </properties>
+    </rule>
+
+    <!-- https://github.com/squizlabs/PHP_CodeSniffer/wiki/Customisable-Sniff-Properties#squizwhitespacesuperfluouswhitespace -->
+    <rule ref="Squiz.WhiteSpace.SuperfluousWhitespace"/>
+
+    <!-- https://github.com/squizlabs/PHP_CodeSniffer/blob/cd5acaa651df870e8a3207926f236400361219e0/src/Standards/Squiz/Sniffs/WhiteSpace/SuperfluousWhitespaceSniff.php#L246 -->
+    <rule ref="Squiz.WhiteSpace.SuperfluousWhitespace.EmptyLines"/>
+
+    <!-- https://github.com/slevomat/coding-standard/blob/master/doc/functions.md#slevomatcodingstandardfunctionsrequiretrailingcommaincall- -->
+    <rule ref="SlevomatCodingStandard.Functions.RequireTrailingCommaInCall"/>
+
+    <file>src/</file>
+    <file>tests/</file>
+</ruleset>

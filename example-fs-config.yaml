@@ -1,0 +1,20 @@
+fs_control:
+  paths:
+    - ./example-fs/Shared
+  exclude_paths:
+    - ./example-fs/Shared/Infrastructure/ParamConverter/Check
+  groups:
+    Application: ~
+    Domain: ~
+    Infrastructure: ~
+  bindings: # <path pattern> -> group
+    $/Application: Application
+    $/Domain: Domain
+    $/Infrastructure: Infrastructure
+  rules: # <directory name> -> [group, ...]
+    Entity:
+      - Domain
+    ParamConverter:
+      - Infrastructure
+    Command:
+      - Application

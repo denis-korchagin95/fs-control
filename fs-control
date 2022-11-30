@@ -1,0 +1,100 @@
+#!/usr/bin/env php
+<?php
+/*
+ * This file is part of fs-control.
+ *
+ * (c) Denis Korchagin <denis.korchagin.1995@gmail.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
+require __DIR__ . '/vendor/autoload.php';
+
+use FsControl\Core\Application;
+use FsControl\Exception\ConfigurationLoaderException;
+use FsControl\Exception\FsControlException;
+use FsControl\Loader\ConfigurationLoader;
+use FsControl\Loader\DirectoryTreeLoader;
+
+const CLI_CODE_OK = 0;
+const CLI_CODE_GENERAL_ERROR = 1;
+const CLI_CODE_VIOLATION_PATHS = 2;
+
+$configFile = null;
+
+$showUncoveredPaths = false;
+$showUnboundedPaths = false;
+
+foreach ($argv as $index => $argument) {
+    if ($index === 0) {
+        continue;
+    }
+    if ($argument === '--show-uncovered-paths') {
+        $showUncoveredPaths = true;
+        continue;
+    }
+    if ($argument === '--show-unbounded-paths') {
+        $showUnboundedPaths = true;
+        continue;
+    }
+    if (str_starts_with($argument, '--')) {
+        fwrite(STDERR, 'Unexpected option "' . $argument . '"!');
+        exit(CLI_CODE_GENERAL_ERROR);
+    }
+    if ($configFile !== null) {
+        fwrite(STDERR, 'Expected only one config file but another one given "' . $argument . '"!');
+        exit(CLI_CODE_GENERAL_ERROR);
+    }
+    $configFile = $argument;
+}
+
+$directoryTreeLoader = new DirectoryTreeLoader(['.git']);
+$configurationLoader = new ConfigurationLoader();
+try {
+    if ($configFile === null) {
+        throw new ConfigurationLoaderException('Expected a config file!');
+    }
+    $resolvedConfigFile = realpath($configFile);
+    if ($resolvedConfigFile === false) {
+        throw new ConfigurationLoaderException('The invalid config file "' . $configFile . '"!');
+    }
+    $configuration = $configurationLoader->loadFromFile($resolvedConfigFile);
+    $result = (new Application($directoryTreeLoader, $configuration))->run();
+} catch (FsControlException $exception) {
+    fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+    exit(CLI_CODE_GENERAL_ERROR);
+}
+
+if ($result->hasViolationPaths()) {
+    echo 'Violation Paths:' , PHP_EOL;
+    foreach ($result->getViolationPaths() as $violationPath) {
+        echo $violationPath, PHP_EOL;
+    }
+    echo PHP_EOL;
+}
+
+if ($showUncoveredPaths && $result->hasUncoveredPaths()) {
+    echo 'Uncovered Paths:' , PHP_EOL;
+    foreach ($result->getUncoveredPaths() as $uncoveredPath) {
+        echo $uncoveredPath, PHP_EOL;
+    }
+    echo PHP_EOL;
+}
+
+if ($showUnboundedPaths && $result->hasUnboundedPaths()) {
+    echo 'Unbounded Paths:' , PHP_EOL;
+    foreach ($result->getUnboundedPaths() as $uncoveredPath) {
+        echo $uncoveredPath, PHP_EOL;
+    }
+    echo PHP_EOL;
+}
+
+echo 'Violation Paths: ', $result->getViolationPathCount(), PHP_EOL;
+echo 'Uncovered Paths: ', $result->getUncoveredPathCount(), PHP_EOL;
+echo 'Unbounded Paths: ', $result->getUnboundedPathCount(), PHP_EOL;
+echo 'Allowed Paths: ', $result->getAllowedPathCount(), PHP_EOL;
+echo 'Bounded Paths: ', $result->getBoundedPathCount(), PHP_EOL;
+exit($result->hasViolationPaths() ? CLI_CODE_VIOLATION_PATHS : CLI_CODE_OK);

@@ -19,6 +19,7 @@ use FsControl\Configuration\Rule;
 use FsControl\Exception\ConfigurationLoaderException;
 use FsControl\Exception\DuplicateConfigurationEntryException;
 use FsControl\Exception\RuleReferToUnknownGroupException;
+use FsControl\Exception\WrongRuleException;
 use Symfony\Component\Yaml\Yaml;
 
 class ConfigurationLoader
@@ -27,6 +28,7 @@ class ConfigurationLoader
      * @throws RuleReferToUnknownGroupException
      * @throws ConfigurationLoaderException
      * @throws DuplicateConfigurationEntryException
+     * @throws WrongRuleException
      */
     public function loadFromFile(string $filePath): Configuration
     {
@@ -129,6 +131,7 @@ class ConfigurationLoader
     /**
      * @param array<string, string[]> $rules
      * @throws RuleReferToUnknownGroupException
+     * @throws WrongRuleException
      */
     private function resolveRules(Configuration $configuration, array $rules): void
     {

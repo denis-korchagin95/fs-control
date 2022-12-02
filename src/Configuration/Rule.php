@@ -13,15 +13,21 @@ declare(strict_types=1);
 
 namespace FsControl\Configuration;
 
+use FsControl\Exception\WrongRuleException;
+
 class Rule
 {
     /**
      * @param string[] $targetGroups
+     * @throws WrongRuleException
      */
     public function __construct(
         private readonly string $targetDirectoryName,
         private readonly array $targetGroups,
     ) {
+        if (str_contains($this->targetDirectoryName, DIRECTORY_SEPARATOR)) {
+            throw new WrongRuleException('You cannot set a path as a target directory!');
+        }
     }
 
     public function getTargetDirectoryName(): string

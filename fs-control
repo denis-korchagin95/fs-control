@@ -11,7 +11,37 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/vendor/autoload.php';
+# find the composer autoload path
+if (isset($GLOBALS['_composer_autoload_path'])) {
+    define('FS_CONTROL_AUTOLOAD_PATH', $GLOBALS['_composer_autoload_path']);
+
+    unset($GLOBALS['_composer_autoload_path']);
+} else {
+    $autoloadPaths = [
+        __DIR__ . '/../../autoload.php',
+        __DIR__ . '/../vendor/autoload.php',
+        __DIR__ . '/vendor/autoload.php',
+    ];
+    foreach ($autoloadPaths as $autoloadPath) {
+        if (file_exists($autoloadPath)) {
+            define('FS_CONTROL_AUTOLOAD_PATH', $autoloadPath);
+            break;
+        }
+    }
+    unset($autoloadPaths, $autoloadPath);
+}
+
+if (!defined('FS_CONTROL_AUTOLOAD_PATH')) {
+    fwrite(
+        STDERR,
+        'You should set up the project via Composer project correctly. '
+        . 'Please go and check to do this here https://getcomposer.org/.'
+        . PHP_EOL
+    );
+    die(1);
+}
+
+require FS_CONTROL_AUTOLOAD_PATH;
 
 use FsControl\Core\Application;
 use FsControl\Exception\ConfigurationLoaderException;

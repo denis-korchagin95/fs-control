@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace FsControl\Test\Feature;
+namespace FsControl\Test\Unit;
 
 use FsControl\Configuration\Binding;
 use FsControl\Configuration\Configuration;
@@ -66,10 +66,9 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
-            $configuration,
         );
 
-        $result = $application->run();
+        $result = $application->run($configuration);
 
         self::assertSame(
             [
@@ -127,10 +126,9 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
-            $configuration,
         );
 
-        $result = $application->run();
+        $result = $application->run($configuration);
 
         self::assertSame(
             [
@@ -191,10 +189,9 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
-            $configuration,
         );
 
-        $result = $application->run();
+        $result = $application->run($configuration);
 
         self::assertSame(
             [
@@ -269,10 +266,9 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
-            $configuration,
         );
 
-        $result = $application->run();
+        $result = $application->run($configuration);
 
         self::assertSame(
             [
@@ -348,10 +344,9 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
-            $configuration,
         );
 
-        $result = $application->run();
+        $result = $application->run($configuration);
 
         self::assertSame(
             [

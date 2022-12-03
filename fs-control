@@ -28,7 +28,7 @@ if (isset($GLOBALS['_composer_autoload_path'])) {
             break;
         }
     }
-    unset($autoloadPaths, $autoloadPath);
+    unset($autoloadPaths);
 }
 
 if (!defined('FS_CONTROL_AUTOLOAD_PATH')) {
@@ -92,7 +92,7 @@ try {
         throw new ConfigurationLoaderException('The invalid config file "' . $configFile . '"!');
     }
     $configuration = $configurationLoader->loadFromFile($resolvedConfigFile);
-    $result = (new Application($directoryTreeLoader, $configuration))->run();
+    $result = (new Application($directoryTreeLoader))->run($configuration);
 } catch (FsControlException $exception) {
     fwrite(STDERR, $exception->getMessage() . PHP_EOL);
     exit(CLI_CODE_GENERAL_ERROR);

@@ -20,34 +20,33 @@ class Application
 {
     public function __construct(
         private readonly DirectoryTreeLoader $directoryTreeLoader,
-        private readonly Configuration $configuration,
     ) {
     }
 
-    public function run(): Result
+    public function run(Configuration $configuration): Result
     {
         $result = new Result();
-        foreach ($this->configuration->getPaths() as $path) {
-            $this->handleOnePath($path, $result);
+        foreach ($configuration->getPaths() as $path) {
+            $this->handleOnePath($path, $configuration, $result);
         }
         return $result;
     }
 
-    private function handleOnePath(string $path, Result $result): void
+    private function handleOnePath(string $path, Configuration $configuration, Result $result): void
     {
         foreach ($this->directoryTreeLoader->loadDirectoryTree($path) as $directoryPath) {
-            if ($this->configuration->isPathExcluded($directoryPath)) {
+            if ($configuration->isPathExcluded($directoryPath)) {
                 continue;
             }
             $relativeDirectoryPath = ltrim(
                 str_replace($path, '', $directoryPath),
                 DIRECTORY_SEPARATOR,
             );
-            if ($this->configuration->isPathBounded($relativeDirectoryPath)) {
+            if ($configuration->isPathBounded($relativeDirectoryPath)) {
                 $result->addBoundedPath($directoryPath);
                 continue;
             }
-            $binding = $this->configuration->getBindingForPath($relativeDirectoryPath);
+            $binding = $configuration->getBindingForPath($relativeDirectoryPath);
             if ($binding === null) {
                 $result->addUnboundedPath($directoryPath);
                 continue;
@@ -57,7 +56,7 @@ class Application
                 '',
                 $relativeDirectoryPath,
             ), DIRECTORY_SEPARATOR);
-            $rule = $this->configuration->findRuleForPath($targetDirectoryName);
+            $rule = $configuration->findRuleForPath($targetDirectoryName);
             if ($rule === null) {
                 $result->addUncoveredPath($directoryPath);
                 continue;

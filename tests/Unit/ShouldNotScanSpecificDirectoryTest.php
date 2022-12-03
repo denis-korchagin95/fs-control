@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace FsControl\Test\Feature;
+namespace FsControl\Test\Unit;
 
 use FsControl\Configuration\Configuration;
 use FsControl\Core\Application;
@@ -40,10 +40,9 @@ class ShouldNotScanSpecificDirectoryTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader(['.git']),
-            $configuration,
         );
 
-        $result = $application->run();
+        $result = $application->run($configuration);
 
         self::assertSame(0, $result->getUnboundedPathCount());
     }

@@ -51,7 +51,7 @@ class ConfigurationLoader
         $this->resolveRules($configuration, $rawConfiguration['fs_control']['rules'] ?? []);
 
         foreach ($configuration->getGroups() as $group) {
-            if (! $configuration->hasBindingToTargetGroup($group)) {
+            if (! $configuration->hasBindingToGroup($group)) {
                 throw new ConfigurationLoaderException(
                     'Should be at least one binding for the group "' . $group . '"!',
                 );
@@ -110,19 +110,12 @@ class ConfigurationLoader
      */
     private function resolveBindings(Configuration $configuration, array $bindings): void
     {
-        foreach ($bindings as $rawBindingPath => $targetGroup) {
-            $relativeBindingPath = $rawBindingPath;
-            if (str_contains($rawBindingPath, '$')) {
-                $relativeBindingPath = ltrim(
-                    str_replace('$', '', $rawBindingPath),
-                    DIRECTORY_SEPARATOR,
-                );
-            }
+        foreach ($bindings as $bindingPath => $group) {
             $configuration->addBinding(
                 new Binding(
-                    $rawBindingPath,
-                    $relativeBindingPath,
-                    $targetGroup,
+                    $bindingPath,
+                    $this->resolveBindingPath($bindingPath),
+                    $group,
                 ),
             );
         }
@@ -135,8 +128,20 @@ class ConfigurationLoader
      */
     private function resolveRules(Configuration $configuration, array $rules): void
     {
-        foreach ($rules as $directoryName => $groups) {
-            $configuration->addRule(new Rule($directoryName, $groups));
+        foreach ($rules as $name => $groups) {
+            $configuration->addRule(new Rule($name, $groups));
         }
+    }
+
+    private function resolveBindingPath(string $bindingPath): string
+    {
+        $result = $bindingPath;
+        if (str_contains($result, '$')) {
+            $result = ltrim(
+                str_replace('$', '', $result),
+                DIRECTORY_SEPARATOR,
+            );
+        }
+        return $result;
     }
 }

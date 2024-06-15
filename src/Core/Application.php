@@ -51,17 +51,17 @@ class Application
                 $result->addUnboundedPath($directoryPath);
                 continue;
             }
-            $targetDirectoryName = ltrim(str_replace(
-                $binding->getRelativeBindingPath(),
+            $directoryName = ltrim(str_replace(
+                $binding->getResolvedBindingPath(),
                 '',
                 $relativeDirectoryPath,
             ), DIRECTORY_SEPARATOR);
-            $rule = $configuration->findRuleForPath($targetDirectoryName);
+            $rule = $configuration->findRuleByName($directoryName);
             if ($rule === null) {
                 $result->addUncoveredPath($directoryPath);
                 continue;
             }
-            if (! $rule->hasTargetGroup($binding->getTargetGroup())) {
+            if (! $rule->hasGroup($binding->getGroup())) {
                 $result->addViolationPath($directoryPath);
                 continue;
             }

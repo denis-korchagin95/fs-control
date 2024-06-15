@@ -61,7 +61,7 @@ class Configuration
     public function getBindingForPath(string $path): ?Binding
     {
         foreach ($this->bindings as $binding) {
-            if (str_starts_with($path, $binding->getRelativeBindingPath() . DIRECTORY_SEPARATOR)) {
+            if (str_starts_with($path, $binding->getResolvedBindingPath() . DIRECTORY_SEPARATOR)) {
                 return $binding;
             }
         }
@@ -76,9 +76,9 @@ class Configuration
         return $this->paths;
     }
 
-    public function findRuleForPath(string $directoryName): ?Rule
+    public function findRuleByName(string $name): ?Rule
     {
-        return $this->rules[$directoryName] ?? null;
+        return $this->rules[$name] ?? null;
     }
 
     /**
@@ -136,10 +136,10 @@ class Configuration
         return $this->groups;
     }
 
-    public function hasBindingToTargetGroup(string $targetGroup): bool
+    public function hasBindingToGroup(string $group): bool
     {
         foreach ($this->bindings as $binding) {
-            if ($binding->getTargetGroup() === $targetGroup) {
+            if ($binding->getGroup() === $group) {
                 return true;
             }
         }
@@ -151,12 +151,12 @@ class Configuration
      */
     public function addRule(Rule $rule): void
     {
-        foreach ($rule->getTargetGroups() as $targetGroup) {
-            if (! $this->hasGroup($targetGroup)) {
-                throw new RuleReferToUnknownGroupException($rule, $targetGroup);
+        foreach ($rule->getGroups() as $group) {
+            if (! $this->hasGroup($group)) {
+                throw new RuleReferToUnknownGroupException($rule, $group);
             }
         }
-        $this->rules[$rule->getTargetDirectoryName()] = $rule;
+        $this->rules[$rule->getName()] = $rule;
     }
 
     private function hasGroup(string $group): bool

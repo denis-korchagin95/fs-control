@@ -20,7 +20,7 @@ class RuleReferToUnknownGroupException extends FsControlException
     public function __construct(Rule $rule, string $group)
     {
         parent::__construct(
-            'The rule "' . $rule->getTargetDirectoryName() . '" refer to the unknown group "' . $group . '"!',
+            'The rule "' . $rule->getName() . '" refer to the unknown group "' . $group . '"!',
         );
     }
 }

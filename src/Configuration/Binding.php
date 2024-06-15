@@ -16,35 +16,35 @@ namespace FsControl\Configuration;
 class Binding
 {
     public function __construct(
-        private readonly string $rawBindingPath,
-        private readonly string $relativeBindingPath,
-        private readonly string $targetGroup,
+        private readonly string $bindingPath,
+        private readonly string $resolvedBindingPath,
+        private readonly string $group,
     ) {
     }
 
-    public function getRawBindingPath(): string
+    public function getBindingPath(): string
     {
-        return $this->rawBindingPath;
+        return $this->bindingPath;
     }
 
-    public function getRelativeBindingPath(): string
+    public function getResolvedBindingPath(): string
     {
-        return $this->relativeBindingPath;
+        return $this->resolvedBindingPath;
     }
 
-    public function getTargetGroup(): string
+    public function getGroup(): string
     {
-        return $this->targetGroup;
+        return $this->group;
     }
 
     public function isBoundedFor(string $path): bool
     {
-        return $path === $this->relativeBindingPath
-            || str_contains($this->relativeBindingPath, $path);
+        return $path === $this->resolvedBindingPath
+            || str_contains($this->resolvedBindingPath, $path);
     }
 
     public function getId(): string
     {
-        return $this->getRawBindingPath() . ':' . $this->getTargetGroup();
+        return $this->getBindingPath() . ':' . $this->getGroup();
     }
 }

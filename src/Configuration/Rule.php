@@ -18,33 +18,33 @@ use FsControl\Exception\WrongRuleException;
 class Rule
 {
     /**
-     * @param string[] $targetGroups
+     * @param string[] $groups
      * @throws WrongRuleException
      */
     public function __construct(
-        private readonly string $targetDirectoryName,
-        private readonly array $targetGroups,
+        private readonly string $name,
+        private readonly array $groups,
     ) {
-        if (str_contains($this->targetDirectoryName, DIRECTORY_SEPARATOR)) {
-            throw new WrongRuleException('You cannot set a path as a target directory!');
+        if (str_contains($this->name, DIRECTORY_SEPARATOR)) {
+            throw new WrongRuleException('You cannot set a path as a rule name!');
         }
     }
 
-    public function getTargetDirectoryName(): string
+    public function getName(): string
     {
-        return $this->targetDirectoryName;
+        return $this->name;
     }
 
     /**
      * @return string[]
      */
-    public function getTargetGroups(): array
+    public function getGroups(): array
     {
-        return $this->targetGroups;
+        return $this->groups;
     }
 
-    public function hasTargetGroup(string $targetGroup): bool
+    public function hasGroup(string $group): bool
     {
-        return in_array($targetGroup, $this->targetGroups, true);
+        return in_array($group, $this->groups, true);
     }
 }

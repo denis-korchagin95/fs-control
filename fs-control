@@ -77,11 +77,11 @@ foreach ($argv as $index => $argument) {
         continue;
     }
     if (str_starts_with($argument, '--')) {
-        fwrite(STDERR, 'Unexpected option "' . $argument . '"!');
+        fwrite(STDERR, 'Unexpected option "' . $argument . '"!' . PHP_EOL);
         exit(CLI_CODE_GENERAL_ERROR);
     }
     if ($configFile !== null) {
-        fwrite(STDERR, 'Expected only one config file but another one given "' . $argument . '"!');
+        fwrite(STDERR, 'Expected only one config file but another one given "' . $argument . '"!' . PHP_EOL);
         exit(CLI_CODE_GENERAL_ERROR);
     }
     $configFile = $argument;

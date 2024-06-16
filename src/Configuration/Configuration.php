@@ -43,6 +43,11 @@ class Configuration
      */
     private array $rules = [];
 
+    /**
+     * @var array<string, string>
+     */
+    private array $defaultRuleAttributes = [];
+
     public function isPathBounded(string $path): bool
     {
         foreach ($this->bindings as $binding) {
@@ -186,5 +191,18 @@ class Configuration
     public function getRules(): array
     {
         return array_values($this->rules);
+    }
+
+    public function addDefaultRuleAttribute(string $name, string $value): void
+    {
+        $this->defaultRuleAttributes[$name] = $value;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getDefaultRuleAttributes(): array
+    {
+        return $this->defaultRuleAttributes;
     }
 }

@@ -15,4 +15,11 @@ namespace FsControl\Exception;
 
 class ConfigurationLoaderException extends FsControlException
 {
+    public static function attributeValueShouldBeAString(string $attributeName, mixed $value): self
+    {
+        return new self(
+            'The value of attribute "' . $attributeName
+            . '" should be a string, but "' . get_debug_type($value) . '" given!',
+        );
+    }
 }

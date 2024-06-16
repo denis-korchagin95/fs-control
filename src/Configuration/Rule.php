@@ -18,6 +18,11 @@ use FsControl\Exception\WrongRuleException;
 class Rule
 {
     /**
+     * @var array<string, string>
+     */
+    private array $attributes = [];
+
+    /**
      * @param string[] $groups
      * @throws WrongRuleException
      */
@@ -43,8 +48,21 @@ class Rule
         return $this->groups;
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function getAttributes(): array
+    {
+        return $this->attributes;
+    }
+
     public function hasGroup(string $group): bool
     {
         return in_array($group, $this->groups, true);
+    }
+
+    public function addAttribute(string $name, string $value): void
+    {
+        $this->attributes[$name] = $value;
     }
 }

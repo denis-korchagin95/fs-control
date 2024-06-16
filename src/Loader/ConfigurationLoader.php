@@ -49,6 +49,7 @@ class ConfigurationLoader
         $this->resolveGroups($configuration, $rawConfiguration['fs_control']['groups'] ?? []);
         $this->resolveBindings($configuration, $rawConfiguration['fs_control']['bindings'] ?? []);
         $this->resolveRules($configuration, $rawConfiguration['fs_control']['rules'] ?? []);
+        $this->resolveRuleAttributes($configuration, $rawConfiguration['fs_control']['rule_attributes'] ?? []);
 
         foreach ($configuration->getGroups() as $group) {
             if (! $configuration->hasBindingToGroup($group)) {
@@ -143,5 +144,37 @@ class ConfigurationLoader
             );
         }
         return $result;
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $ruleAttributes
+     *
+     * @throws ConfigurationLoaderException
+     */
+    private function resolveRuleAttributes(Configuration $configuration, array $ruleAttributes): void
+    {
+        foreach ($ruleAttributes as $ruleName => $attributes) {
+            if ($ruleName === '_defaults') {
+                foreach ($attributes as $name => $value) {
+                    if (!is_string($value)) {
+                        throw ConfigurationLoaderException::attributeValueShouldBeAString($name, $value);
+                    }
+                    $configuration->addDefaultRuleAttribute($name, $value);
+                }
+                continue;
+            }
+            $rule = $configuration->findRuleByName($ruleName);
+            if ($rule === null) {
+                throw new ConfigurationLoaderException(
+                    'Rule "' . $ruleName . '" does not exist!',
+                );
+            }
+            foreach ($attributes as $name => $value) {
+                if (!is_string($value)) {
+                    throw ConfigurationLoaderException::attributeValueShouldBeAString($name, $value);
+                }
+                $rule->addAttribute($name, $value);
+            }
+        }
     }
 }

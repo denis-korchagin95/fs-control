@@ -112,6 +112,13 @@ class ConfigurationLoader
     private function resolveBindings(Configuration $configuration, array $bindings): void
     {
         foreach ($bindings as $bindingPath => $group) {
+            if (!str_starts_with($bindingPath, '$')) {
+                trigger_error(
+                    'A binding path "' . $bindingPath . '" should start with "$"!',
+                    E_USER_DEPRECATED,
+                );
+            }
+
             $configuration->addBinding(
                 new Binding(
                     $bindingPath,

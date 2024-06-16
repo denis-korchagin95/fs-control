@@ -59,10 +59,15 @@ $configFile = null;
 $showUncoveredPaths = false;
 $showUnboundedPaths = false;
 $failOnUncoveredPaths = false;
+$isNeedToShowHelp = false;
 
 foreach ($argv as $index => $argument) {
     if ($index === 0) {
         continue;
+    }
+    if ($argument === '--help') {
+        $isNeedToShowHelp = true;
+        break;
     }
     if ($argument === '--show-uncovered-paths') {
         $showUncoveredPaths = true;
@@ -85,6 +90,30 @@ foreach ($argv as $index => $argument) {
         exit(CLI_CODE_GENERAL_ERROR);
     }
     $configFile = $argument;
+}
+
+if ($isNeedToShowHelp) {
+    fwrite(STDOUT, 'Usage: ' . basename($argv[0]) . ' [FILE] [OPTION]...' . PHP_EOL);
+    fwrite(STDOUT, PHP_EOL);
+    fwrite(STDOUT, 'Options:' . PHP_EOL);
+    $options = [
+        '--help' => 'Displays help message',
+        '--show-uncovered-paths' => 'Show uncovered paths (out of rules)',
+        '--show-unbounded-paths' => 'Show unbounded paths (not configured for tool in binding section)',
+        '--fail-on-uncovered-paths' => 'Treat uncovered paths as failures',
+    ];
+    $maxPadCount = 0;
+    foreach (array_keys($options) as $option) {
+        $optionCharCount = strlen($option);
+        if ($optionCharCount > $maxPadCount) {
+            $maxPadCount = $optionCharCount;
+        }
+    }
+    foreach ($options as $option => $description) {
+        $option = str_pad($option, $maxPadCount + 2);
+        fwrite(STDOUT, "\t" . $option . $description . PHP_EOL);
+    }
+    exit(CLI_CODE_OK);
 }
 
 $directoryTreeLoader = new DirectoryTreeLoader(['.git']);

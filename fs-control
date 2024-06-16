@@ -53,12 +53,14 @@ const CLI_CODE_OK = 0;
 const CLI_CODE_GENERAL_ERROR = 1;
 const CLI_CODE_VIOLATION_PATHS = 2;
 const CLI_CODE_UNCOVERED_PATHS = 3;
+const CLI_CODE_UNBOUNDED_PATHS = 4;
 
 $configFile = null;
 
 $showUncoveredPaths = false;
 $showUnboundedPaths = false;
 $failOnUncoveredPaths = false;
+$failOnUnboundedPaths = false;
 $isNeedToShowHelp = false;
 
 foreach ($argv as $index => $argument) {
@@ -81,6 +83,10 @@ foreach ($argv as $index => $argument) {
         $failOnUncoveredPaths = true;
         continue;
     }
+    if ($argument === '--fail-on-unbounded-paths') {
+        $failOnUnboundedPaths = true;
+        continue;
+    }
     if (str_starts_with($argument, '--')) {
         fwrite(STDERR, 'Unexpected option "' . $argument . '"!' . PHP_EOL);
         exit(CLI_CODE_GENERAL_ERROR);
@@ -101,6 +107,7 @@ if ($isNeedToShowHelp) {
         '--show-uncovered-paths' => 'Show uncovered paths (out of rules)',
         '--show-unbounded-paths' => 'Show unbounded paths (not configured for tool in binding section)',
         '--fail-on-uncovered-paths' => 'Treat uncovered paths as failures',
+        '--fail-on-unbounded-paths' => 'Treat unbounded paths as failures',
     ];
     $maxPadCount = 0;
     foreach (array_keys($options) as $option) {
@@ -152,7 +159,10 @@ if (
     echo PHP_EOL;
 }
 
-if ($showUnboundedPaths && $result->hasUnboundedPaths()) {
+if (
+        ($showUnboundedPaths || $failOnUnboundedPaths)
+        && $result->hasUnboundedPaths()
+) {
     echo 'Unbounded Paths:' , PHP_EOL;
     foreach ($result->getUnboundedPaths() as $uncoveredPath) {
         echo $uncoveredPath, PHP_EOL;
@@ -170,6 +180,9 @@ $returnCode = $result->hasViolationPaths() ? CLI_CODE_VIOLATION_PATHS : CLI_CODE
 
 if ($returnCode === CLI_CODE_OK && $failOnUncoveredPaths && $result->hasUncoveredPaths()) {
     $returnCode = CLI_CODE_UNCOVERED_PATHS;
+}
+if ($returnCode === CLI_CODE_OK && $failOnUnboundedPaths && $result->hasUnboundedPaths()) {
+    $returnCode = CLI_CODE_UNBOUNDED_PATHS;
 }
 
 exit($returnCode);

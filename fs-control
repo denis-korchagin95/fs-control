@@ -99,27 +99,19 @@ foreach ($argv as $index => $argument) {
 }
 
 if ($isNeedToShowHelp) {
-    fwrite(STDOUT, 'Usage: ' . basename($argv[0]) . ' [FILE] [OPTION]...' . PHP_EOL);
-    fwrite(STDOUT, PHP_EOL);
-    fwrite(STDOUT, 'Options:' . PHP_EOL);
-    $options = [
-        '--help' => 'Displays help message',
-        '--show-uncovered-paths' => 'Show uncovered paths (out of rules)',
-        '--show-unbounded-paths' => 'Show unbounded paths (not configured for tool in binding section)',
-        '--fail-on-uncovered-paths' => 'Treat uncovered paths as failures',
-        '--fail-on-unbounded-paths' => 'Treat unbounded paths as failures',
-    ];
-    $maxPadCount = 0;
-    foreach (array_keys($options) as $option) {
-        $optionCharCount = strlen($option);
-        if ($optionCharCount > $maxPadCount) {
-            $maxPadCount = $optionCharCount;
-        }
-    }
-    foreach ($options as $option => $description) {
-        $option = str_pad($option, $maxPadCount + 2);
-        fwrite(STDOUT, "\t" . $option . $description . PHP_EOL);
-    }
+    fwrite(STDOUT, <<<OUTPUT
+Usage: fs-control [FILE] [OPTION]...
+
+Options:
+        --help                     Displays help message
+        --show-uncovered-paths     Show uncovered paths (out of rules)
+        --show-unbounded-paths     Show unbounded paths (not configured for tool in binding section)
+        --fail-on-uncovered-paths  Treat uncovered paths as failures
+        --fail-on-unbounded-paths  Treat unbounded paths as failures
+
+
+OUTPUT
+    );
     exit(CLI_CODE_OK);
 }
 

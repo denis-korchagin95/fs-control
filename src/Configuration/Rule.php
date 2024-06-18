@@ -18,7 +18,7 @@ use FsControl\Exception\WrongRuleException;
 class Rule
 {
     /**
-     * @var array<string, string>
+     * @var array<string, scalar|null>
      */
     private array $attributes = [];
 
@@ -49,7 +49,7 @@ class Rule
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, scalar|null>
      */
     public function getAttributes(): array
     {
@@ -61,7 +61,7 @@ class Rule
         return in_array($group, $this->groups, true);
     }
 
-    public function addAttribute(string $name, string $value): void
+    public function addAttribute(string $name, int|float|string|bool|null $value): void
     {
         $this->attributes[$name] = $value;
     }

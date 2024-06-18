@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace FsControl\Core;
 
 use FsControl\Configuration\Configuration;
+use FsControl\Configuration\Rule;
 use FsControl\Exception\ExtensionException;
 use FsControl\Extension\ExtensionInterface;
 use FsControl\Loader\DirectoryTreeLoader;
@@ -157,5 +158,16 @@ class Application
             }
         }
         return $isTerminateSucceed;
+    }
+
+    /**
+     * @return array<string, scalar|null>
+     */
+    public function getAttributesForRule(Rule $rule): array
+    {
+        return array_replace(
+            $this->getConfiguration()->getDefaultRuleAttributes(),
+            $rule->getAttributes(),
+        );
     }
 }

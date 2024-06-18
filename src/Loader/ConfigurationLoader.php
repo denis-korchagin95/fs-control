@@ -22,6 +22,9 @@ use FsControl\Exception\RuleReferToUnknownGroupException;
 use FsControl\Exception\WrongRuleException;
 use Symfony\Component\Yaml\Yaml;
 
+use function is_null;
+use function is_scalar;
+
 class ConfigurationLoader
 {
     /**
@@ -164,8 +167,8 @@ class ConfigurationLoader
         foreach ($ruleAttributes as $ruleName => $attributes) {
             if ($ruleName === '_defaults') {
                 foreach ($attributes as $name => $value) {
-                    if (! is_string($value)) {
-                        throw ConfigurationLoaderException::attributeValueShouldBeAString($name, $value);
+                    if (! is_scalar($value) && ! is_null($value)) {
+                        throw ConfigurationLoaderException::notScalarOrNullAttribute($name, $value);
                     }
                     $configuration->addDefaultRuleAttribute($name, $value);
                 }
@@ -178,8 +181,8 @@ class ConfigurationLoader
                 );
             }
             foreach ($attributes as $name => $value) {
-                if (! is_string($value)) {
-                    throw ConfigurationLoaderException::attributeValueShouldBeAString($name, $value);
+                if (! is_scalar($value) && ! is_null($value)) {
+                    throw ConfigurationLoaderException::notScalarOrNullAttribute($name, $value);
                 }
                 $rule->addAttribute($name, $value);
             }

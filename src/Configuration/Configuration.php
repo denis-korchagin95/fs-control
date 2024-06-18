@@ -44,7 +44,7 @@ class Configuration
     private array $rules = [];
 
     /**
-     * @var array<string, string>
+     * @var array<string, scalar|null>
      */
     private array $defaultRuleAttributes = [];
 
@@ -211,13 +211,13 @@ class Configuration
         return array_values($this->rules);
     }
 
-    public function addDefaultRuleAttribute(string $name, string $value): void
+    public function addDefaultRuleAttribute(string $name, int|float|string|bool|null $value): void
     {
         $this->defaultRuleAttributes[$name] = $value;
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, scalar|null>
      */
     public function getDefaultRuleAttributes(): array
     {

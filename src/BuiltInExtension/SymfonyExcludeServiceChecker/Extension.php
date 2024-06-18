@@ -145,12 +145,12 @@ class Extension implements ExtensionInterface
         }
         /** @var Config $config */
         $config = $application->getExtensionInfo(self::EXTENSION_INFO_KEY_CONFIG);
-        $attributes = $rule->getAttributes();
+        $attributes = $application->getAttributesForRule($rule);
         $isSymfonyService = $attributes['symfony_service'] ?? null;
         if ($isSymfonyService === null) {
             return;
         }
-        if ($isSymfonyService !== 'false') {
+        if ($isSymfonyService !== false) {
             return;
         }
         $excludePackage = $config->findExcludePackageByResourcePath($context->rootPath);

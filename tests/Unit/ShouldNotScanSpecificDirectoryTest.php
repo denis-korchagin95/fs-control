@@ -35,14 +35,15 @@ class ShouldNotScanSpecificDirectoryTest extends TestCase
     {
         $fs = vfsStream::setup('example', 444, ['.git' => []]);
 
-        $configuration = new Configuration();
+        $configuration = new Configuration([]);
         $configuration->addPath($fs->url());
 
         $application = new Application(
             new DirectoryTreeLoader(['.git']),
+            $configuration,
         );
 
-        $result = $application->run($configuration);
+        $result = $application->run();
 
         self::assertSame(0, $result->getUnboundedPathCount());
     }

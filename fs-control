@@ -54,6 +54,7 @@ const CLI_CODE_GENERAL_ERROR = 1;
 const CLI_CODE_VIOLATION_PATHS = 2;
 const CLI_CODE_UNCOVERED_PATHS = 3;
 const CLI_CODE_UNBOUNDED_PATHS = 4;
+const CLI_CODE_EXTENSION_ERROR = 5;
 
 $configFile = null;
 
@@ -126,47 +127,48 @@ try {
         throw new ConfigurationLoaderException('The invalid config file "' . $configFile . '"!');
     }
     $configuration = $configurationLoader->loadFromFile($resolvedConfigFile);
-    $result = (new Application($directoryTreeLoader))->run($configuration);
+    $application = new Application($directoryTreeLoader, $configuration);
+    $result = $application->run();
 } catch (FsControlException $exception) {
     fwrite(STDERR, $exception->getMessage() . PHP_EOL);
     exit(CLI_CODE_GENERAL_ERROR);
 }
 
 if ($result->hasViolationPaths()) {
-    echo 'Violation Paths:' , PHP_EOL;
+    fwrite(STDOUT, 'Violation Paths:' . PHP_EOL);
     foreach ($result->getViolationPaths() as $violationPath) {
-        echo $violationPath, PHP_EOL;
+        fwrite(STDOUT, $violationPath . PHP_EOL);
     }
-    echo PHP_EOL;
+    fwrite(STDOUT, PHP_EOL);
 }
 
 if (
         ($showUncoveredPaths || $failOnUncoveredPaths)
         && $result->hasUncoveredPaths()
 ) {
-    echo 'Uncovered Paths:' , PHP_EOL;
+    fwrite(STDOUT, 'Uncovered Paths:' . PHP_EOL);
     foreach ($result->getUncoveredPaths() as $uncoveredPath) {
-        echo $uncoveredPath, PHP_EOL;
+        fwrite(STDOUT, $uncoveredPath . PHP_EOL);
     }
-    echo PHP_EOL;
+    fwrite(STDOUT, PHP_EOL);
 }
 
 if (
         ($showUnboundedPaths || $failOnUnboundedPaths)
         && $result->hasUnboundedPaths()
 ) {
-    echo 'Unbounded Paths:' , PHP_EOL;
+    fwrite(STDOUT, 'Unbounded Paths:' . PHP_EOL);
     foreach ($result->getUnboundedPaths() as $uncoveredPath) {
-        echo $uncoveredPath, PHP_EOL;
+        fwrite(STDOUT, $uncoveredPath . PHP_EOL);
     }
-    echo PHP_EOL;
+    fwrite(STDOUT, PHP_EOL);
 }
 
-echo 'Violation Paths: ', $result->getViolationPathCount(), PHP_EOL;
-echo 'Uncovered Paths: ', $result->getUncoveredPathCount(), PHP_EOL;
-echo 'Unbounded Paths: ', $result->getUnboundedPathCount(), PHP_EOL;
-echo 'Allowed Paths: ', $result->getAllowedPathCount(), PHP_EOL;
-echo 'Bounded Paths: ', $result->getBoundedPathCount(), PHP_EOL;
+fwrite(STDOUT, 'Violation Paths: ' . $result->getViolationPathCount() . PHP_EOL);
+fwrite(STDOUT, 'Uncovered Paths: ' . $result->getUncoveredPathCount() . PHP_EOL);
+fwrite(STDOUT, 'Unbounded Paths: ' . $result->getUnboundedPathCount() . PHP_EOL);
+fwrite(STDOUT, 'Allowed Paths: ' . $result->getAllowedPathCount() . PHP_EOL);
+fwrite(STDOUT, 'Bounded Paths: ' . $result->getBoundedPathCount() . PHP_EOL);
 
 $returnCode = $result->hasViolationPaths() ? CLI_CODE_VIOLATION_PATHS : CLI_CODE_OK;
 
@@ -175,6 +177,12 @@ if ($returnCode === CLI_CODE_OK && $failOnUncoveredPaths && $result->hasUncovere
 }
 if ($returnCode === CLI_CODE_OK && $failOnUnboundedPaths && $result->hasUnboundedPaths()) {
     $returnCode = CLI_CODE_UNBOUNDED_PATHS;
+}
+
+$isTerminateSucceed = $application->terminate(STDOUT);
+
+if ($returnCode === CLI_CODE_OK && !$isTerminateSucceed) {
+    $returnCode = CLI_CODE_EXTENSION_ERROR;
 }
 
 exit($returnCode);

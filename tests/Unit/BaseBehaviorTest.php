@@ -54,7 +54,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration();
+        $configuration = new Configuration([]);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addBinding(
@@ -66,9 +66,10 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
+            $configuration,
         );
 
-        $result = $application->run($configuration);
+        $result = $application->run();
 
         self::assertSame(
             [
@@ -116,7 +117,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration();
+        $configuration = new Configuration([]);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addBinding(
@@ -126,9 +127,10 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
+            $configuration,
         );
 
-        $result = $application->run($configuration);
+        $result = $application->run();
 
         self::assertSame(
             [
@@ -179,7 +181,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration();
+        $configuration = new Configuration([]);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addBinding(
@@ -189,9 +191,10 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
+            $configuration,
         );
 
-        $result = $application->run($configuration);
+        $result = $application->run();
 
         self::assertSame(
             [
@@ -243,7 +246,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration();
+        $configuration = new Configuration([]);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addGroup('Application');
@@ -266,9 +269,10 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
+            $configuration,
         );
 
-        $result = $application->run($configuration);
+        $result = $application->run();
 
         self::assertSame(
             [
@@ -322,7 +326,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration();
+        $configuration = new Configuration([]);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addGroup('Application');
@@ -344,9 +348,10 @@ class BaseBehaviorTest extends TestCase
 
         $application = new Application(
             new DirectoryTreeLoader([]),
+            $configuration,
         );
 
-        $result = $application->run($configuration);
+        $result = $application->run();
 
         self::assertSame(
             [

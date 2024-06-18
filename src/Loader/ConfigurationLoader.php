@@ -42,7 +42,7 @@ class ConfigurationLoader
             throw new ConfigurationLoaderException('The root element must be "fs_control"!');
         }
 
-        $configuration = new Configuration();
+        $configuration = new Configuration($rawConfiguration);
 
         $this->resolvePaths($configuration, $rawConfiguration['fs_control']['paths'] ?? []);
         $this->resolveExcludePaths($configuration, $rawConfiguration['fs_control']['exclude_paths'] ?? []);
@@ -50,6 +50,7 @@ class ConfigurationLoader
         $this->resolveBindings($configuration, $rawConfiguration['fs_control']['bindings'] ?? []);
         $this->resolveRules($configuration, $rawConfiguration['fs_control']['rules'] ?? []);
         $this->resolveRuleAttributes($configuration, $rawConfiguration['fs_control']['rule_attributes'] ?? []);
+        $this->resolveExtensions($configuration, $rawConfiguration['fs_control']['extensions'] ?? []);
 
         foreach ($configuration->getGroups() as $group) {
             if (! $configuration->hasBindingToGroup($group)) {
@@ -112,7 +113,7 @@ class ConfigurationLoader
     private function resolveBindings(Configuration $configuration, array $bindings): void
     {
         foreach ($bindings as $bindingPath => $group) {
-            if (!str_starts_with($bindingPath, '$')) {
+            if (! str_starts_with($bindingPath, '$')) {
                 trigger_error(
                     'A binding path "' . $bindingPath . '" should start with "$"!',
                     E_USER_DEPRECATED,
@@ -163,7 +164,7 @@ class ConfigurationLoader
         foreach ($ruleAttributes as $ruleName => $attributes) {
             if ($ruleName === '_defaults') {
                 foreach ($attributes as $name => $value) {
-                    if (!is_string($value)) {
+                    if (! is_string($value)) {
                         throw ConfigurationLoaderException::attributeValueShouldBeAString($name, $value);
                     }
                     $configuration->addDefaultRuleAttribute($name, $value);
@@ -177,11 +178,21 @@ class ConfigurationLoader
                 );
             }
             foreach ($attributes as $name => $value) {
-                if (!is_string($value)) {
+                if (! is_string($value)) {
                     throw ConfigurationLoaderException::attributeValueShouldBeAString($name, $value);
                 }
                 $rule->addAttribute($name, $value);
             }
+        }
+    }
+
+    /**
+     * @param class-string[] $extensions
+     */
+    private function resolveExtensions(Configuration $configuration, array $extensions): void
+    {
+        foreach ($extensions as $extension) {
+            $configuration->addExtension($extension);
         }
     }
 }

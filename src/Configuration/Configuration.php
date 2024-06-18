@@ -48,6 +48,24 @@ class Configuration
      */
     private array $defaultRuleAttributes = [];
 
+    /**
+     * @var class-string[]
+     */
+    private array $extensions = [];
+
+    /**
+     * @var mixed[]
+     */
+    private array $rawConfiguration;
+
+    /**
+     * @param mixed[] $rawConfiguration
+     */
+    public function __construct(array $rawConfiguration)
+    {
+        $this->rawConfiguration = $rawConfiguration;
+    }
+
     public function isPathBounded(string $path): bool
     {
         foreach ($this->bindings as $binding) {
@@ -204,5 +222,32 @@ class Configuration
     public function getDefaultRuleAttributes(): array
     {
         return $this->defaultRuleAttributes;
+    }
+
+    /**
+     * @param class-string $extension
+     */
+    public function addExtension(string $extension): void
+    {
+        if (in_array($extension, $this->extensions, true)) {
+            return;
+        }
+        $this->extensions[] = $extension;
+    }
+
+    /**
+     * @return class-string[]
+     */
+    public function getExtensions(): array
+    {
+        return $this->extensions;
+    }
+
+    /**
+     * @return mixed[]
+     */
+    public function getRawConfiguration(): array
+    {
+        return $this->rawConfiguration;
     }
 }

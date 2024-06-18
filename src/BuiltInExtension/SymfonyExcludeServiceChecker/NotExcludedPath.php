@@ -11,8 +11,13 @@
 
 declare(strict_types=1);
 
-namespace FsControl\Exception;
+namespace FsControl\BuiltInExtension\SymfonyExcludeServiceChecker;
 
-class WrongRuleException extends FsControlException
+class NotExcludedPath
 {
+    public function __construct(
+        public string $path,
+        public ExcludePackage $excludePackage,
+    ) {
+    }
 }

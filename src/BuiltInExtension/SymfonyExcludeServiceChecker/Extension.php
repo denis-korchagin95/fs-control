@@ -175,59 +175,72 @@ class Extension implements ExtensionInterface
      */
     public function terminate(Application $application, $stream): bool
     {
-        /** @var Result|null $result */
-        $result = $application->getExtensionInfo(self::EXTENSION_INFO_KEY_RESULT);
-        if ($result === null) {
-            /** @var Config $config */
-            $config = $application->getExtensionInfo(self::EXTENSION_INFO_KEY_CONFIG);
-            $failed = false;
-            $isShowNewlines = false;
-            foreach ($config->getExcludePackages() as $excludePackage) {
-                if (count($excludePackage->brokePaths) > 0) {
-                    $failed = true;
-
-                    if ($isShowNewlines === false) {
-                        $isShowNewlines = true;
-                        fwrite($stream, PHP_EOL . PHP_EOL);
-                    }
-
-                    fwrite($stream, 'Found violations for config: ' . $excludePackage->configPath . PHP_EOL);
-                    fwrite($stream, '   Section ' . $excludePackage->name . ':' . PHP_EOL);
-                    fwrite($stream, '       Broken paths:' . PHP_EOL);
-                    foreach ($excludePackage->brokePaths as $path) {
-                        fwrite($stream, '           ' . $path . PHP_EOL);
-                    }
-                }
-                if ($isShowNewlines === true) {
-                    fwrite($stream, PHP_EOL);
-                }
-            }
-            if ($failed === true) {
-                return false;
-            }
-            return true;
-        }
-        $excludePathResults = $result->getPathsGroupedByExcludePackage();
-        if (count($excludePathResults) === 0) {
+        $violations = $this->getViolationsForReport($application);
+        if (count($violations) === 0) {
             return true;
         }
         fwrite($stream, PHP_EOL . PHP_EOL);
-        foreach ($excludePathResults as $excludePathResult) {
-            /** @var ExcludePackage $excludePackage */
-            $excludePackage = $excludePathResult['package'];
-            fwrite($stream, 'Found violations for config: ' . $excludePackage->configPath . PHP_EOL);
-            fwrite($stream, '   Section ' . $excludePackage->name . ':' . PHP_EOL);
+        foreach ($violations as $violation) {
+            $this->reportViolationsForExcludePackage(
+                $stream,
+                $violation['notExcludedPaths'],
+                $violation['excludePackage'],
+            );
+            fwrite($stream, PHP_EOL);
+        }
+        return false;
+    }
+
+    /**
+     * @param resource $stream
+     * @param string[] $notExcludePaths
+     */
+    private function reportViolationsForExcludePackage(
+        $stream,
+        array $notExcludePaths,
+        ExcludePackage $excludePackage,
+    ): void {
+        fwrite($stream, 'Found violations for config: ' . $excludePackage->configPath . PHP_EOL);
+        fwrite($stream, '   Section ' . $excludePackage->name . ':' . PHP_EOL);
+        if (count($notExcludePaths) > 0) {
             fwrite($stream, '       Not excluded paths:' . PHP_EOL);
-            foreach ($excludePathResult['paths'] as $path) {
-                fwrite($stream, '           ' . $path . PHP_EOL);
-            }
-            fwrite($stream, '       Broken paths:' . PHP_EOL);
-            foreach ($excludePackage->brokePaths as $path) {
+            foreach ($notExcludePaths as $path) {
                 fwrite($stream, '           ' . $path . PHP_EOL);
             }
         }
-        // TODO: show rest package with broken paths
-        fwrite($stream, PHP_EOL);
-        return false;
+        fwrite($stream, '       Broken paths:' . PHP_EOL);
+        foreach ($excludePackage->brokePaths as $path) {
+            fwrite($stream, '           ' . $path . PHP_EOL);
+        }
+    }
+
+    /**
+     * @return array{notExcludedPaths: string[], excludePackage: ExcludePackage}[]
+     */
+    private function getViolationsForReport(Application $application): array
+    {
+        $violations = [];
+        /** @var Config $config */
+        $config = $application->getExtensionInfo(self::EXTENSION_INFO_KEY_CONFIG);
+        foreach ($config->getExcludePackages() as $excludePackage) {
+            $hash = spl_object_hash($excludePackage);
+            $violations[$hash] = ['notExcludedPaths' => [], 'excludePackage' => $excludePackage];
+        }
+        /** @var Result|null $result */
+        $result = $application->getExtensionInfo(self::EXTENSION_INFO_KEY_RESULT);
+        if ($result !== null) {
+            foreach ($result->getPathsGroupedByExcludePackage() as $excludePathResult) {
+                $hash = spl_object_hash($excludePathResult['package']);
+                if (! array_key_exists($hash, $violations)) {
+                    $violations[$hash] = [
+                        'notExcludedPaths' => $excludePathResult['paths'],
+                        'excludePackage' => $excludePathResult['package']
+                    ];
+                    continue;
+                }
+                $violations[$hash]['notExcludedPaths'] = $excludePathResult['paths'];
+            }
+        }
+        return array_values($violations);
     }
 }

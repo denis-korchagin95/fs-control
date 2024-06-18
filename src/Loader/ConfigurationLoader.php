@@ -54,6 +54,7 @@ class ConfigurationLoader
         $this->resolveRules($configuration, $rawConfiguration['fs_control']['rules'] ?? []);
         $this->resolveRuleAttributes($configuration, $rawConfiguration['fs_control']['rule_attributes'] ?? []);
         $this->resolveExtensions($configuration, $rawConfiguration['fs_control']['extensions'] ?? []);
+        $this->resolveParameters($configuration, $rawConfiguration['fs_control']['parameters'] ?? []);
 
         foreach ($configuration->getGroups() as $group) {
             if (! $configuration->hasBindingToGroup($group)) {
@@ -196,6 +197,21 @@ class ConfigurationLoader
     {
         foreach ($extensions as $extension) {
             $configuration->addExtension($extension);
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $parameters
+     *
+     * @throws ConfigurationLoaderException
+     */
+    private function resolveParameters(Configuration $configuration, array $parameters): void
+    {
+        foreach ($parameters as $name => $value) {
+            if (! is_scalar($value) && ! is_null($value)) {
+                throw ConfigurationLoaderException::notScalarOrNullParameter($name, $value);
+            }
+            $configuration->addParameter($name, $value);
         }
     }
 }

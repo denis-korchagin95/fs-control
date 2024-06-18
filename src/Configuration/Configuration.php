@@ -59,6 +59,11 @@ class Configuration
     private array $rawConfiguration;
 
     /**
+     * @var array<string, scalar|null>
+     */
+    private array $parameters = [];
+
+    /**
      * @param mixed[] $rawConfiguration
      */
     public function __construct(array $rawConfiguration)
@@ -249,5 +254,18 @@ class Configuration
     public function getRawConfiguration(): array
     {
         return $this->rawConfiguration;
+    }
+
+    public function addParameter(string $name, float|bool|int|string|null $value): void
+    {
+        $this->parameters[$name] = $value;
+    }
+
+    /**
+     * @return array<string, scalar|null>
+     */
+    public function getParameters(): array
+    {
+        return $this->parameters;
     }
 }

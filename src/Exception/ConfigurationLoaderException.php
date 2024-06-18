@@ -22,4 +22,12 @@ class ConfigurationLoaderException extends FsControlException
             . '" should be a scalar or null, but "' . get_debug_type($value) . '" given!',
         );
     }
+
+    public static function notScalarOrNullParameter(string $parameterName, mixed $value): self
+    {
+        return new self(
+            'The value of parameter "' . $parameterName
+            . '" should be a scalar or null, but "' . get_debug_type($value) . '" given!',
+        );
+    }
 }

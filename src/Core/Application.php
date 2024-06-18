@@ -41,6 +41,9 @@ class Application
         $this->loadExtensions();
     }
 
+    /**
+     * @throws ExtensionException
+     */
     public function run(): Result
     {
         $result = new Result();
@@ -50,6 +53,9 @@ class Application
         return $result;
     }
 
+    /**
+     * @throws ExtensionException
+     */
     private function handleOnePath(string $path, Result $result): void
     {
         foreach ($this->directoryTreeLoader->loadDirectoryTree($path) as $directoryPath) {
@@ -71,6 +77,18 @@ class Application
                 continue;
             }
             if ($pathHandleContext->rule === null) {
+                if ($pathHandleContext->directoryName !== null) {
+                    $directoryList = explode('/', $pathHandleContext->directoryName);
+                    $rule = $this->configuration->findRuleByName($directoryList[0]);
+                    if ($rule !== null) {
+                        $ruleAttributes = $this->getAttributesForRule($rule);
+                        $allowedSubdirectoryLevel = $ruleAttributes['allowed_subdirectory_level'] ?? 0;
+                        if (count($directoryList) - 1 <= $allowedSubdirectoryLevel) {
+                            $result->addAllowedPath($directoryPath);
+                            continue;
+                        }
+                    }
+                }
                 $result->addUncoveredPath($directoryPath);
                 continue;
             }

@@ -171,6 +171,7 @@ class ConfigurationLoader
                     if (! is_scalar($value) && ! is_null($value)) {
                         throw ConfigurationLoaderException::notScalarOrNullAttribute($name, $value);
                     }
+                    $this->tryToValidateBuiltInAttribute($ruleName, $name, $value);
                     $configuration->addDefaultRuleAttribute($name, $value);
                 }
                 continue;
@@ -185,6 +186,7 @@ class ConfigurationLoader
                 if (! is_scalar($value) && ! is_null($value)) {
                     throw ConfigurationLoaderException::notScalarOrNullAttribute($name, $value);
                 }
+                $this->tryToValidateBuiltInAttribute($ruleName, $name, $value);
                 $rule->addAttribute($name, $value);
             }
         }
@@ -212,6 +214,30 @@ class ConfigurationLoader
                 throw ConfigurationLoaderException::notScalarOrNullParameter($name, $value);
             }
             $configuration->addParameter($name, $value);
+        }
+    }
+
+    /**
+     * @throws ConfigurationLoaderException
+     */
+    private function tryToValidateBuiltInAttribute(
+        string $ruleName,
+        string $attributeName,
+        float|bool|int|string|null $value,
+    ): void {
+        if ($attributeName === 'allowed_subdirectory_level') {
+            if (! is_int($value)) {
+                throw new ConfigurationLoaderException(
+                    'The attribute "allowed_subdirectory_level" for rule "'
+                    . $ruleName . '" must be an integer!',
+                );
+            }
+            if ($value < 0) {
+                throw new ConfigurationLoaderException(
+                    'The attribute "allowed_subdirectory_level" for rule "'
+                    . $ruleName . '" should be greater than or equal to zero!',
+                );
+            }
         }
     }
 }

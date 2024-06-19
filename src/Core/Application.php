@@ -60,6 +60,7 @@ class Application
     {
         foreach ($this->directoryTreeLoader->loadDirectoryTree($path) as $directoryPath) {
             if ($this->configuration->isPathExcluded($directoryPath)) {
+                $result->addExcludedPath($directoryPath);
                 continue;
             }
             $pathHandleContext = $this->preparePathHandleContext($path, $directoryPath);

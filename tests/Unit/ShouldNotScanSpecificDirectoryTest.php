@@ -15,10 +15,10 @@ namespace FsControl\Test\Unit;
 
 use FsControl\Configuration\Configuration;
 use FsControl\Core\Application;
-use FsControl\Exception\DuplicateConfigurationEntryException;
 use FsControl\Loader\DirectoryTreeLoader;
 use org\bovigo\vfs\vfsStream;
 use PHPUnit\Framework\TestCase;
+use Throwable;
 
 /**
  * @covers \FsControl\Core\Application
@@ -29,7 +29,8 @@ class ShouldNotScanSpecificDirectoryTest extends TestCase
 {
     /**
      * @test
-     * @throws DuplicateConfigurationEntryException
+     *
+     * @throws Throwable
      */
     public function itShouldNotScanDirectoryOfAGitRepository(): void
     {

@@ -40,29 +40,39 @@ class Result
      */
     private array $violationPaths = [];
 
-    public function addAllowedPath(string $allowedPath): void
+    /**
+     * @var string[]
+     */
+    private array $excludedPaths = [];
+
+    public function addAllowedPath(string $path): void
     {
-        $this->allowedPaths[] = $allowedPath;
+        $this->allowedPaths[] = $path;
     }
 
-    public function addUnboundedPath(string $unboundedPath): void
+    public function addUnboundedPath(string $path): void
     {
-        $this->unboundedPaths[] = $unboundedPath;
+        $this->unboundedPaths[] = $path;
     }
 
-    public function addBoundedPath(string $boundedPath): void
+    public function addBoundedPath(string $path): void
     {
-        $this->boundedPaths[] = $boundedPath;
+        $this->boundedPaths[] = $path;
     }
 
-    public function addUncoveredPath(string $uncoveredPath): void
+    public function addUncoveredPath(string $path): void
     {
-        $this->uncoveredPaths[] = $uncoveredPath;
+        $this->uncoveredPaths[] = $path;
     }
 
-    public function addViolationPath(string $violationPath): void
+    public function addViolationPath(string $path): void
     {
-        $this->violationPaths[] = $violationPath;
+        $this->violationPaths[] = $path;
+    }
+
+    public function addExcludedPath(string $path): void
+    {
+        $this->excludedPaths[] = $path;
     }
 
     /**
@@ -105,6 +115,14 @@ class Result
         return $this->violationPaths;
     }
 
+    /**
+     * @return string[]
+     */
+    public function getExcludedPaths(): array
+    {
+        return $this->excludedPaths;
+    }
+
     public function getViolationPathCount(): int
     {
         return count($this->violationPaths);
@@ -130,6 +148,11 @@ class Result
         return count($this->boundedPaths);
     }
 
+    public function getExcludedPathCount(): int
+    {
+        return count($this->excludedPaths);
+    }
+
     public function hasViolationPaths(): bool
     {
         return $this->violationPaths !== [];
@@ -143,5 +166,10 @@ class Result
     public function hasUnboundedPaths(): bool
     {
         return $this->unboundedPaths !== [];
+    }
+
+    public function hasExcludedPaths(): bool
+    {
+        return $this->excludedPaths !== [];
     }
 }

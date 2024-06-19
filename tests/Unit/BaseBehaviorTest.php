@@ -23,6 +23,7 @@ use FsControl\Exception\WrongRuleException;
 use FsControl\Loader\DirectoryTreeLoader;
 use org\bovigo\vfs\vfsStream;
 use PHPUnit\Framework\TestCase;
+use Throwable;
 
 /**
  * @covers \FsControl\Core\Application
@@ -33,9 +34,8 @@ class BaseBehaviorTest extends TestCase
 {
     /**
      * @test
-     * @throws DuplicateConfigurationEntryException
-     * @throws RuleReferToUnknownGroupException
-     * @throws WrongRuleException
+     *
+     * @throws Throwable
      */
     public function itShouldNotCheckAnExcludePath(): void
     {
@@ -96,9 +96,8 @@ class BaseBehaviorTest extends TestCase
 
     /**
      * @test
-     * @throws DuplicateConfigurationEntryException
-     * @throws RuleReferToUnknownGroupException
-     * @throws WrongRuleException
+     *
+     * @throws Throwable
      */
     public function itShouldReportAboutUncoveredPaths(): void
     {
@@ -160,9 +159,8 @@ class BaseBehaviorTest extends TestCase
 
     /**
      * @test
-     * @throws DuplicateConfigurationEntryException
-     * @throws RuleReferToUnknownGroupException
-     * @throws WrongRuleException
+     *
+     * @throws Throwable
      */
     public function itShouldReportAboutUnboundedPaths(): void
     {
@@ -224,9 +222,8 @@ class BaseBehaviorTest extends TestCase
 
     /**
      * @test
-     * @throws DuplicateConfigurationEntryException
-     * @throws RuleReferToUnknownGroupException
-     * @throws WrongRuleException
+     *
+     * @throws Throwable
      */
     public function itShouldReportAboutViolationPaths(): void
     {
@@ -303,9 +300,8 @@ class BaseBehaviorTest extends TestCase
 
     /**
      * @test
-     * @throws DuplicateConfigurationEntryException
-     * @throws RuleReferToUnknownGroupException
-     * @throws WrongRuleException
+     *
+     * @throws Throwable
      */
     public function itShouldCorrectHandleTheOverlappingTheCommonPrefixOfTheTargetDirectories(): void
     {

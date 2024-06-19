@@ -60,6 +60,7 @@ $configFile = null;
 
 $showUncoveredPaths = false;
 $showUnboundedPaths = false;
+$showExcludedPaths = false;
 $failOnUncoveredPaths = false;
 $failOnUnboundedPaths = false;
 $isNeedToShowHelp = false;
@@ -78,6 +79,10 @@ foreach ($argv as $index => $argument) {
     }
     if ($argument === '--show-unbounded-paths') {
         $showUnboundedPaths = true;
+        continue;
+    }
+    if ($argument === '--show-excluded-paths') {
+        $showExcludedPaths = true;
         continue;
     }
     if ($argument === '--fail-on-uncovered-paths') {
@@ -107,6 +112,7 @@ Options:
         --help                     Displays help message
         --show-uncovered-paths     Show uncovered paths (out of rules)
         --show-unbounded-paths     Show unbounded paths (not configured for tool in binding section)
+        --show-excluded-paths      Show excluded paths
         --fail-on-uncovered-paths  Treat uncovered paths as failures
         --fail-on-unbounded-paths  Treat unbounded paths as failures
 
@@ -136,8 +142,8 @@ try {
 
 if ($result->hasViolationPaths()) {
     fwrite(STDOUT, 'Violation Paths:' . PHP_EOL);
-    foreach ($result->getViolationPaths() as $violationPath) {
-        fwrite(STDOUT, $violationPath . PHP_EOL);
+    foreach ($result->getViolationPaths() as $path) {
+        fwrite(STDOUT, $path . PHP_EOL);
     }
     fwrite(STDOUT, PHP_EOL);
 }
@@ -147,8 +153,8 @@ if (
         && $result->hasUncoveredPaths()
 ) {
     fwrite(STDOUT, 'Uncovered Paths:' . PHP_EOL);
-    foreach ($result->getUncoveredPaths() as $uncoveredPath) {
-        fwrite(STDOUT, $uncoveredPath . PHP_EOL);
+    foreach ($result->getUncoveredPaths() as $path) {
+        fwrite(STDOUT, $path . PHP_EOL);
     }
     fwrite(STDOUT, PHP_EOL);
 }
@@ -158,8 +164,16 @@ if (
         && $result->hasUnboundedPaths()
 ) {
     fwrite(STDOUT, 'Unbounded Paths:' . PHP_EOL);
-    foreach ($result->getUnboundedPaths() as $uncoveredPath) {
-        fwrite(STDOUT, $uncoveredPath . PHP_EOL);
+    foreach ($result->getUnboundedPaths() as $path) {
+        fwrite(STDOUT, $path . PHP_EOL);
+    }
+    fwrite(STDOUT, PHP_EOL);
+}
+
+if ($showExcludedPaths && $result->hasExcludedPaths()) {
+    fwrite(STDOUT, 'Excluded Paths:' . PHP_EOL);
+    foreach ($result->getExcludedPaths() as $path) {
+        fwrite(STDOUT, $path . PHP_EOL);
     }
     fwrite(STDOUT, PHP_EOL);
 }
@@ -167,6 +181,7 @@ if (
 fwrite(STDOUT, 'Violation Paths: ' . $result->getViolationPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Uncovered Paths: ' . $result->getUncoveredPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Unbounded Paths: ' . $result->getUnboundedPathCount() . PHP_EOL);
+fwrite(STDOUT, 'Excluded Paths: ' . $result->getExcludedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Allowed Paths: ' . $result->getAllowedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Bounded Paths: ' . $result->getBoundedPathCount() . PHP_EOL);
 

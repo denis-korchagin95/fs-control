@@ -79,12 +79,30 @@ class Application
             if ($pathHandleContext->rule === null) {
                 if ($pathHandleContext->directoryName !== null) {
                     $directoryList = explode('/', $pathHandleContext->directoryName);
+                    $ruleEntryCount = 0;
+                    foreach ($directoryList as $directory) {
+                        $rule = $this->configuration->findRuleByName($directory);
+                        if ($rule !== null) {
+                            ++$ruleEntryCount;
+                        }
+                    }
+                    $parameters = $this->configuration->getParameters();
+                    $denyNestedRules = $parameters['deny_nested_rules'] ?? false;
+                    if ($denyNestedRules === true && $ruleEntryCount > 1) {
+                        $result->addViolationPath($directoryPath);
+                        continue;
+                    }
                     $rule = $this->configuration->findRuleByName($directoryList[0]);
                     if ($rule !== null) {
                         $ruleAttributes = $this->getAttributesForRule($rule);
                         $allowedSubdirectoryLevel = $ruleAttributes['allowed_subdirectory_level'] ?? 0;
+                        $treatExceedSubdirectoryLevelAsFault = $ruleAttributes
+                            ['treat_exceed_subdirectory_level_as_fault'] ?? false;
                         if (count($directoryList) - 1 <= $allowedSubdirectoryLevel) {
                             $result->addAllowedPath($directoryPath);
+                            continue;
+                        } elseif ($treatExceedSubdirectoryLevelAsFault === true) {
+                            $result->addViolationPath($directoryPath);
                             continue;
                         }
                     }

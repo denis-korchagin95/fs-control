@@ -213,6 +213,7 @@ class ConfigurationLoader
             if (! is_scalar($value) && ! is_null($value)) {
                 throw ConfigurationLoaderException::notScalarOrNullParameter($name, $value);
             }
+            $this->tryToValidateBuiltInParameter($name, $value);
             $configuration->addParameter($name, $value);
         }
     }
@@ -236,6 +237,28 @@ class ConfigurationLoader
                 throw new ConfigurationLoaderException(
                     'The attribute "allowed_subdirectory_level" for rule "'
                     . $ruleName . '" should be greater than or equal to zero!',
+                );
+            }
+        }
+        if ($attributeName === 'treat_exceed_subdirectory_level_as_fault') {
+            if (! is_bool($value)) {
+                throw new ConfigurationLoaderException(
+                    'The attribute "treat_exceed_subdirectory_level_as_fault" for rule "'
+                    . $ruleName . '" must be a boolean!',
+                );
+            }
+        }
+    }
+
+    /**
+     * @throws ConfigurationLoaderException
+     */
+    private function tryToValidateBuiltInParameter(string $name, float|bool|int|string|null $value): void
+    {
+        if ($name === 'deny_nested_rules') {
+            if (! is_bool($value)) {
+                throw new ConfigurationLoaderException(
+                    'The parameter "deny_nested_rules" must be a boolean!',
                 );
             }
         }

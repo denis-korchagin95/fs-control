@@ -17,9 +17,6 @@ use FsControl\Configuration\Binding;
 use FsControl\Configuration\Configuration;
 use FsControl\Configuration\Rule;
 use FsControl\Core\Application;
-use FsControl\Exception\DuplicateConfigurationEntryException;
-use FsControl\Exception\RuleReferToUnknownGroupException;
-use FsControl\Exception\WrongRuleException;
 use FsControl\Loader\DirectoryTreeLoader;
 use org\bovigo\vfs\vfsStream;
 use PHPUnit\Framework\TestCase;
@@ -54,7 +51,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration([]);
+        $configuration = new Configuration('test-config', []);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addBinding(
@@ -74,11 +71,22 @@ class BaseBehaviorTest extends TestCase
         self::assertSame(
             [
                 'allowedPaths' => [
-                    'vfs://example/Shared/Domain/Entity',
+                    [
+                        'path' => 'vfs://example/Shared/Domain/Entity',
+                        'description' => 'The path is allowed by rules',
+                    ],
                 ],
                 'boundedPaths' => [
-                    'vfs://example/Shared',
-                    'vfs://example/Shared/Domain',
+                    [
+                        'path' => 'vfs://example/Shared',
+                        'description' =>
+                            'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain',
+                        'description' =>
+                            'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
                 ],
                 'unboundedPaths' => [],
                 'uncoveredPaths' => [],
@@ -116,7 +124,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration([]);
+        $configuration = new Configuration('test-config', []);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addBinding(
@@ -134,16 +142,31 @@ class BaseBehaviorTest extends TestCase
         self::assertSame(
             [
                 'allowedPaths' => [
-                    'vfs://example/Shared/Domain/Entity',
+                    [
+                        'path' => 'vfs://example/Shared/Domain/Entity',
+                        'description' => 'The path is allowed by rules',
+                    ],
                 ],
                 'boundedPaths' => [
-                    'vfs://example/Shared',
-                    'vfs://example/Shared/Domain',
+                    [
+                        'path' => 'vfs://example/Shared',
+                        'description' => 'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain',
+                        'description' => 'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
                 ],
                 'unboundedPaths' => [],
                 'uncoveredPaths' => [
-                    'vfs://example/Shared/Domain/Check',
-                    'vfs://example/Shared/Domain/Check/SomeDir',
+                    [
+                        'path' => 'vfs://example/Shared/Domain/Check',
+                        'description' => 'The path is not covered by any rules',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain/Check/SomeDir',
+                        'description' => 'The path is not covered by any rules',
+                    ],
                 ],
                 'violationPaths' => [],
             ],
@@ -179,7 +202,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration([]);
+        $configuration = new Configuration('test-config', []);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addBinding(
@@ -197,15 +220,34 @@ class BaseBehaviorTest extends TestCase
         self::assertSame(
             [
                 'allowedPaths' => [
-                    'vfs://example/Shared/Domain/Entity',
+                    [
+                        'path' => 'vfs://example/Shared/Domain/Entity',
+                        'description' => 'The path is allowed by rules',
+                    ],
                 ],
                 'boundedPaths' => [
-                    'vfs://example/Shared',
-                    'vfs://example/Shared/Domain',
+                    [
+                        'path' => 'vfs://example/Shared',
+                        'description' =>
+                            'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain',
+                        'description' =>
+                            'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
                 ],
                 'unboundedPaths' => [
-                    'vfs://example/Shared/Application',
-                    'vfs://example/Shared/Application/Dto',
+                    [
+                        'path' => 'vfs://example/Shared/Application',
+                        'reason' =>
+                            'The path cannot be analyzed because no bindings configured in the config "test-config"',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Application/Dto',
+                        'reason' =>
+                            'The path cannot be analyzed because no bindings configured in the config "test-config"',
+                    ],
                 ],
                 'uncoveredPaths' => [],
                 'violationPaths' => [],
@@ -243,7 +285,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration([]);
+        $configuration = new Configuration('test-config', []);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addGroup('Application');
@@ -274,18 +316,37 @@ class BaseBehaviorTest extends TestCase
         self::assertSame(
             [
                 'allowedPaths' => [
-                    'vfs://example/Shared/Application/Dto',
-                    'vfs://example/Shared/Domain/Entity',
+                    [
+                        'path' => 'vfs://example/Shared/Application/Dto',
+                        'description' => 'The path is allowed by rules',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain/Entity',
+                        'description' => 'The path is allowed by rules',
+                    ],
                 ],
                 'boundedPaths' => [
-                    'vfs://example/Shared',
-                    'vfs://example/Shared/Domain',
-                    'vfs://example/Shared/Application',
+                    [
+                        'path' => 'vfs://example/Shared',
+                        'description' => 'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain',
+                        'description' => 'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Application',
+                        'description' => 'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
                 ],
                 'unboundedPaths' => [],
                 'uncoveredPaths' => [],
                 'violationPaths' => [
-                    'vfs://example/Shared/Application/Entity',
+                    [
+                        'path' => 'vfs://example/Shared/Application/Entity',
+                        'reason' => 'The path is permitted under the "Entity" rule to be part of groups (Domain), '
+                            . 'but it is located in the "Application" group',
+                    ],
                 ],
             ],
             [
@@ -322,7 +383,7 @@ class BaseBehaviorTest extends TestCase
             ],
         );
 
-        $configuration = new Configuration([]);
+        $configuration = new Configuration('test-config', []);
         $configuration->addPath($fs->url());
         $configuration->addGroup('Domain');
         $configuration->addGroup('Application');
@@ -352,14 +413,32 @@ class BaseBehaviorTest extends TestCase
         self::assertSame(
             [
                 'allowedPaths' => [
-                    'vfs://example/Shared/Domain/TaskManager/Entity',
-                    'vfs://example/Shared/Domain/Task/Entity',
+                    [
+                        'path' => 'vfs://example/Shared/Domain/TaskManager/Entity',
+                        'description' => 'The path is allowed by rules',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain/Task/Entity',
+                        'description' => 'The path is allowed by rules',
+                    ],
                 ],
                 'boundedPaths' => [
-                    'vfs://example/Shared',
-                    'vfs://example/Shared/Domain',
-                    'vfs://example/Shared/Domain/Task',
-                    'vfs://example/Shared/Domain/TaskManager',
+                    [
+                        'path' => 'vfs://example/Shared',
+                        'description' => 'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain',
+                        'description' => 'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain/Task',
+                        'description' => 'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
+                    [
+                        'path' => 'vfs://example/Shared/Domain/TaskManager',
+                        'description' => 'The path is the mount point of the rules applied in the config "test-config"',
+                    ],
                 ],
                 'unboundedPaths' => [],
                 'uncoveredPaths' => [],

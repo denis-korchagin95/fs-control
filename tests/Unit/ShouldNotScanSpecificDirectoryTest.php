@@ -36,7 +36,7 @@ class ShouldNotScanSpecificDirectoryTest extends TestCase
     {
         $fs = vfsStream::setup('example', 444, ['.git' => []]);
 
-        $configuration = new Configuration([]);
+        $configuration = new Configuration('test-config', []);
         $configuration->addPath($fs->url());
 
         $application = new Application(

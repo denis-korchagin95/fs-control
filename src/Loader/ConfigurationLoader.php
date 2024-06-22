@@ -45,7 +45,7 @@ class ConfigurationLoader
             throw new ConfigurationLoaderException('The root element must be "fs_control"!');
         }
 
-        $configuration = new Configuration($rawConfiguration);
+        $configuration = new Configuration($filePath, $rawConfiguration);
 
         $this->resolvePaths($configuration, $rawConfiguration['fs_control']['paths'] ?? []);
         $this->resolveExcludePaths($configuration, $rawConfiguration['fs_control']['exclude_paths'] ?? []);

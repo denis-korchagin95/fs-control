@@ -61,9 +61,12 @@ $configFile = null;
 $showUncoveredPaths = false;
 $showUnboundedPaths = false;
 $showExcludedPaths = false;
+$showAllowedPaths = false;
+$showBoundedPaths = false;
 $failOnUncoveredPaths = false;
 $failOnUnboundedPaths = false;
 $isNeedToShowHelp = false;
+$explain = false;
 
 foreach ($argv as $index => $argument) {
     if ($index === 0) {
@@ -85,12 +88,24 @@ foreach ($argv as $index => $argument) {
         $showExcludedPaths = true;
         continue;
     }
+    if ($argument === '--show-allowed-paths') {
+        $showAllowedPaths = true;
+        continue;
+    }
+    if ($argument === '--show-bounded-paths') {
+        $showBoundedPaths = true;
+        continue;
+    }
     if ($argument === '--fail-on-uncovered-paths') {
         $failOnUncoveredPaths = true;
         continue;
     }
     if ($argument === '--fail-on-unbounded-paths') {
         $failOnUnboundedPaths = true;
+        continue;
+    }
+    if ($argument === '--explain') {
+        $explain = true;
         continue;
     }
     if (str_starts_with($argument, '--')) {
@@ -113,8 +128,11 @@ Options:
         --show-uncovered-paths     Show uncovered paths (out of rules)
         --show-unbounded-paths     Show unbounded paths (not configured for tool in binding section)
         --show-excluded-paths      Show excluded paths
+        --show-allowed-paths       Show allowed paths
+        --show-bounded-paths       Show bounded paths
         --fail-on-uncovered-paths  Treat uncovered paths as failures
         --fail-on-unbounded-paths  Treat unbounded paths as failures
+        --explain                  Explains why each path is in its category
 
 
 OUTPUT
@@ -142,38 +160,87 @@ try {
 
 if ($result->hasViolationPaths()) {
     fwrite(STDOUT, 'Violation Paths:' . PHP_EOL);
-    foreach ($result->getViolationPaths() as $path) {
-        fwrite(STDOUT, $path . PHP_EOL);
+    foreach ($result->getViolationPaths() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['reason'] . PHP_EOL . PHP_EOL);
+        }
     }
     fwrite(STDOUT, PHP_EOL);
 }
 
 if (
-        ($showUncoveredPaths || $failOnUncoveredPaths)
-        && $result->hasUncoveredPaths()
+    (
+        $showUncoveredPaths
+        || $failOnUncoveredPaths
+    )
+    && $result->hasUncoveredPaths()
 ) {
     fwrite(STDOUT, 'Uncovered Paths:' . PHP_EOL);
-    foreach ($result->getUncoveredPaths() as $path) {
-        fwrite(STDOUT, $path . PHP_EOL);
+    foreach ($result->getUncoveredPaths() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['description'] . PHP_EOL . PHP_EOL);
+        }
     }
     fwrite(STDOUT, PHP_EOL);
 }
 
 if (
-        ($showUnboundedPaths || $failOnUnboundedPaths)
-        && $result->hasUnboundedPaths()
+    (
+        $showUnboundedPaths
+        || $failOnUnboundedPaths
+    )
+    && $result->hasUnboundedPaths()
 ) {
     fwrite(STDOUT, 'Unbounded Paths:' . PHP_EOL);
-    foreach ($result->getUnboundedPaths() as $path) {
-        fwrite(STDOUT, $path . PHP_EOL);
+    foreach ($result->getUnboundedPaths() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['reason'] . PHP_EOL . PHP_EOL);
+        }
     }
     fwrite(STDOUT, PHP_EOL);
 }
 
-if ($showExcludedPaths && $result->hasExcludedPaths()) {
+if (
+    $showExcludedPaths
+    && $result->hasExcludedPaths()
+) {
     fwrite(STDOUT, 'Excluded Paths:' . PHP_EOL);
-    foreach ($result->getExcludedPaths() as $path) {
-        fwrite(STDOUT, $path . PHP_EOL);
+    foreach ($result->getExcludedPaths() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['description'] . PHP_EOL . PHP_EOL);
+        }
+    }
+    fwrite(STDOUT, PHP_EOL);
+}
+
+if (
+    $showBoundedPaths
+    && $result->hasBoundedPaths()
+) {
+    fwrite(STDOUT, 'Bounded Paths:' . PHP_EOL);
+    foreach ($result->getBoundedPaths() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['description'] . PHP_EOL . PHP_EOL);
+        }
+    }
+    fwrite(STDOUT, PHP_EOL);
+}
+
+if (
+    $showAllowedPaths
+    && $result->hasAllowedPaths()
+) {
+    fwrite(STDOUT, 'Allowed Paths:' . PHP_EOL);
+    foreach ($result->getAllowedPaths() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['description'] . PHP_EOL . PHP_EOL);
+        }
     }
     fwrite(STDOUT, PHP_EOL);
 }
@@ -182,21 +249,32 @@ fwrite(STDOUT, 'Violation Paths: ' . $result->getViolationPathCount() . PHP_EOL)
 fwrite(STDOUT, 'Uncovered Paths: ' . $result->getUncoveredPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Unbounded Paths: ' . $result->getUnboundedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Excluded Paths: ' . $result->getExcludedPathCount() . PHP_EOL);
-fwrite(STDOUT, 'Allowed Paths: ' . $result->getAllowedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Bounded Paths: ' . $result->getBoundedPathCount() . PHP_EOL);
+fwrite(STDOUT, 'Allowed Paths: ' . $result->getAllowedPathCount() . PHP_EOL);
 
 $returnCode = $result->hasViolationPaths() ? CLI_CODE_VIOLATION_PATHS : CLI_CODE_OK;
 
-if ($returnCode === CLI_CODE_OK && $failOnUncoveredPaths && $result->hasUncoveredPaths()) {
+if (
+    $returnCode === CLI_CODE_OK
+    && $failOnUncoveredPaths
+    && $result->hasUncoveredPaths()
+) {
     $returnCode = CLI_CODE_UNCOVERED_PATHS;
 }
-if ($returnCode === CLI_CODE_OK && $failOnUnboundedPaths && $result->hasUnboundedPaths()) {
+if (
+    $returnCode === CLI_CODE_OK
+    && $failOnUnboundedPaths
+    && $result->hasUnboundedPaths()
+) {
     $returnCode = CLI_CODE_UNBOUNDED_PATHS;
 }
 
 $isTerminateSucceed = $application->terminate(STDOUT);
 
-if ($returnCode === CLI_CODE_OK && !$isTerminateSucceed) {
+if (
+    $returnCode === CLI_CODE_OK
+    && !$isTerminateSucceed
+) {
     $returnCode = CLI_CODE_EXTENSION_ERROR;
 }
 

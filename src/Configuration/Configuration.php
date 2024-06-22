@@ -63,11 +63,16 @@ class Configuration
      */
     private array $parameters = [];
 
+    private string $configPath;
+
     /**
      * @param mixed[] $rawConfiguration
      */
-    public function __construct(array $rawConfiguration)
-    {
+    public function __construct(
+        string $configPath,
+        array $rawConfiguration,
+    ) {
+        $this->configPath = $configPath;
         $this->rawConfiguration = $rawConfiguration;
     }
 
@@ -267,5 +272,10 @@ class Configuration
     public function getParameters(): array
     {
         return $this->parameters;
+    }
+
+    public function getConfigName(): string
+    {
+        return basename($this->configPath);
     }
 }

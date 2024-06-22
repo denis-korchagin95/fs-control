@@ -16,67 +16,67 @@ namespace FsControl\Core;
 class Result
 {
     /**
-     * @var string[]
+     * @var array{path: string, description: string}[]
      */
     private array $allowedPaths = [];
 
     /**
-     * @var string[]
+     * @var array{path: string, description: string}[]
      */
     private array $boundedPaths = [];
 
     /**
-     * @var string[]
+     * @var array{path: string, reason: string}[]
      */
     private array $unboundedPaths = [];
 
     /**
-     * @var string[]
+     * @var array{path: string, description: string}[]
      */
     private array $uncoveredPaths = [];
 
     /**
-     * @var string[]
+     * @var array{path: string, reason: string}[]
      */
     private array $violationPaths = [];
 
     /**
-     * @var string[]
+     * @var array{path: string, description: string}[]
      */
     private array $excludedPaths = [];
 
-    public function addAllowedPath(string $path): void
+    public function addAllowedPath(string $path, string $description): void
     {
-        $this->allowedPaths[] = $path;
+        $this->allowedPaths[] = ['path' => $path, 'description' => $description];
     }
 
-    public function addUnboundedPath(string $path): void
+    public function addUnboundedPath(string $path, string $reason): void
     {
-        $this->unboundedPaths[] = $path;
+        $this->unboundedPaths[] = ['path' => $path, 'reason' => $reason];
     }
 
-    public function addBoundedPath(string $path): void
+    public function addBoundedPath(string $path, string $description): void
     {
-        $this->boundedPaths[] = $path;
+        $this->boundedPaths[] = ['path' => $path, 'description' => $description];
     }
 
-    public function addUncoveredPath(string $path): void
+    public function addUncoveredPath(string $path, string $description): void
     {
-        $this->uncoveredPaths[] = $path;
+        $this->uncoveredPaths[] = ['path' => $path, 'description' => $description];
     }
 
-    public function addViolationPath(string $path): void
+    public function addViolationPath(string $path, string $reason): void
     {
-        $this->violationPaths[] = $path;
+        $this->violationPaths[] = ['path' => $path, 'reason' => $reason];
     }
 
-    public function addExcludedPath(string $path): void
+    public function addExcludedPath(string $path, string $description): void
     {
-        $this->excludedPaths[] = $path;
+        $this->excludedPaths[] = ['path' => $path, 'description' => $description];
     }
 
     /**
-     * @return string[]
+     * @return array{path: string, description: string}[]
      */
     public function getAllowedPaths(): array
     {
@@ -84,7 +84,7 @@ class Result
     }
 
     /**
-     * @return string[]
+     * @return array{path: string, description: string}[]
      */
     public function getBoundedPaths(): array
     {
@@ -92,7 +92,7 @@ class Result
     }
 
     /**
-     * @return string[]
+     * @return array{path: string, reason: string}[]
      */
     public function getUnboundedPaths(): array
     {
@@ -100,7 +100,7 @@ class Result
     }
 
     /**
-     * @return string[]
+     * @return array{path: string, description: string}[]
      */
     public function getUncoveredPaths(): array
     {
@@ -108,7 +108,7 @@ class Result
     }
 
     /**
-     * @return string[]
+     * @return array{path: string, reason: string}[]
      */
     public function getViolationPaths(): array
     {
@@ -116,7 +116,7 @@ class Result
     }
 
     /**
-     * @return string[]
+     * @return array{path: string, description: string}[]
      */
     public function getExcludedPaths(): array
     {
@@ -171,5 +171,15 @@ class Result
     public function hasExcludedPaths(): bool
     {
         return $this->excludedPaths !== [];
+    }
+
+    public function hasAllowedPaths(): bool
+    {
+        return $this->allowedPaths !== [];
+    }
+
+    public function hasBoundedPaths(): bool
+    {
+        return $this->boundedPaths !== [];
     }
 }

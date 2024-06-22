@@ -60,7 +60,11 @@ class Application
     {
         foreach ($this->directoryTreeLoader->loadDirectoryTree($path) as $directoryPath) {
             if ($this->configuration->isPathExcluded($directoryPath)) {
-                $result->addExcludedPath($directoryPath);
+                $result->addExcludedPath(
+                    $directoryPath,
+                    'The path was excluded from analysis by the tool in the config "'
+                    . $this->configuration->getConfigName() . '"',
+                );
                 continue;
             }
             $pathHandleContext = $this->preparePathHandleContext($path, $directoryPath);
@@ -70,27 +74,41 @@ class Application
             }
 
             if ($this->configuration->isPathBounded($pathHandleContext->relativePath)) {
-                $result->addBoundedPath($directoryPath);
+                $result->addBoundedPath(
+                    $directoryPath,
+                    'The path is the mount point of the rules applied in the config "'
+                    . $this->configuration->getConfigName() . '"',
+                );
                 continue;
             }
             if ($pathHandleContext->binding === null) {
-                $result->addUnboundedPath($directoryPath);
+                $result->addUnboundedPath(
+                    $directoryPath,
+                    'The path cannot be analyzed because no bindings configured in the config "'
+                    . $this->configuration->getConfigName() . '"',
+                );
                 continue;
             }
             if ($pathHandleContext->rule === null) {
                 if ($pathHandleContext->directoryName !== null) {
                     $directoryList = explode('/', $pathHandleContext->directoryName);
                     $ruleEntryCount = 0;
+                    $ruleNames = [];
                     foreach ($directoryList as $directory) {
                         $rule = $this->configuration->findRuleByName($directory);
                         if ($rule !== null) {
                             ++$ruleEntryCount;
+                            $ruleNames[] = $rule->getName();
                         }
                     }
                     $parameters = $this->configuration->getParameters();
                     $denyNestedRules = $parameters['deny_nested_rules'] ?? false;
                     if ($denyNestedRules === true && $ruleEntryCount > 1) {
-                        $result->addViolationPath($directoryPath);
+                        $result->addViolationPath(
+                            $directoryPath,
+                            'The path attempts to share a few rules ('
+                            . implode(', ', $ruleNames) . ') when nested rules were denied',
+                        );
                         continue;
                     }
                     $rule = $this->configuration->findRuleByName($directoryList[0]);
@@ -100,22 +118,41 @@ class Application
                         $treatExceedSubdirectoryLevelAsFault = $ruleAttributes
                             ['treat_exceed_subdirectory_level_as_fault'] ?? false;
                         if (count($directoryList) - 1 <= $allowedSubdirectoryLevel) {
-                            $result->addAllowedPath($directoryPath);
+                            $result->addAllowedPath(
+                                $directoryPath,
+                                'The path is allowed by subdirectory level (configured '
+                                . $allowedSubdirectoryLevel . ' for the rule "' . $rule->getName() . '")',
+                            );
                             continue;
                         } elseif ($treatExceedSubdirectoryLevelAsFault === true) {
-                            $result->addViolationPath($directoryPath);
+                            $result->addViolationPath(
+                                $directoryPath,
+                                'The subdirectory level was exceeded (configured '
+                                . $allowedSubdirectoryLevel . ' for the rule "' . $rule->getName() . '")',
+                            );
                             continue;
                         }
                     }
                 }
-                $result->addUncoveredPath($directoryPath);
+                $result->addUncoveredPath(
+                    $directoryPath,
+                    'The path is not covered by any rules',
+                );
                 continue;
             }
             if (! $pathHandleContext->rule->hasGroup($pathHandleContext->binding->getGroup())) {
-                $result->addViolationPath($directoryPath);
+                $result->addViolationPath(
+                    $directoryPath,
+                    'The path is permitted under the "' . $pathHandleContext->rule->getName()
+                    . '" rule to be part of groups (' . implode(', ', $pathHandleContext->rule->getGroups())
+                    . '), but it is located in the "' . $pathHandleContext->binding->getGroup() . '" group',
+                );
                 continue;
             }
-            $result->addAllowedPath($directoryPath);
+            $result->addAllowedPath(
+                $directoryPath,
+                'The path is allowed by rules',
+            );
         }
     }
 

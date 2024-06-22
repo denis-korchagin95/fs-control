@@ -163,7 +163,7 @@ class Extension implements ExtensionInterface
             $result = new Result();
             $application->setExtensionInfo(self::EXTENSION_INFO_KEY_RESULT, $result);
         }
-        if ($excludePackage->isPathExcluded($context->path)) {
+        if (! $excludePackage->isPathExcluded($context->path)) {
             $result->addPath(
                 new NotExcludedPath($context->path, $excludePackage),
             );
@@ -208,9 +208,11 @@ class Extension implements ExtensionInterface
                 fwrite($stream, '           ' . $path . PHP_EOL);
             }
         }
-        fwrite($stream, '       Broken paths:' . PHP_EOL);
-        foreach ($excludePackage->brokePaths as $path) {
-            fwrite($stream, '           ' . $path . PHP_EOL);
+        if (count($excludePackage->brokePaths) > 0) {
+            fwrite($stream, '       Broken paths:' . PHP_EOL);
+            foreach ($excludePackage->brokePaths as $path) {
+                fwrite($stream, '           ' . $path . PHP_EOL);
+            }
         }
     }
 
@@ -239,6 +241,14 @@ class Extension implements ExtensionInterface
                     continue;
                 }
                 $violations[$hash]['notExcludedPaths'] = $excludePathResult['paths'];
+            }
+        }
+        foreach ($violations as $hash => $violation) {
+            if (
+                count($violation['notExcludedPaths']) === 0
+                && $violation['excludePackage']->hasViolations()
+            ) {
+                unset($violations[$hash]);
             }
         }
         return array_values($violations);

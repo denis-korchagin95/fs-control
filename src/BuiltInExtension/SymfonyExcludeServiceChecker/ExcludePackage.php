@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace FsControl\BuiltInExtension\SymfonyExcludeServiceChecker;
 
+use Webmozart\Glob\Glob;
+
 class ExcludePackage
 {
     /**
@@ -32,7 +34,11 @@ class ExcludePackage
     {
         foreach ($this->excludePaths as $excludePath) {
             if (str_contains($excludePath, '*')) {
-                // TODO: implement checking on glob
+                if (Glob::match($path, $excludePath)) {
+                    return true;
+                } elseif (Glob::match($path . '/', $excludePath)) {
+                    return true;
+                }
                 continue;
             }
             if ($excludePath === $path) {
@@ -40,5 +46,10 @@ class ExcludePackage
             }
         }
         return false;
+    }
+
+    public function hasViolations(): bool
+    {
+        return count($this->brokePaths) === 0;
     }
 }

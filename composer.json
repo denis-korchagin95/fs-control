@@ -5,7 +5,8 @@
     "license": "BSD-3-Clause",
     "require": {
         "symfony/yaml": ">=5.2",
-        "php": ">=8.1"
+        "php": ">=8.1",
+        "webmozart/glob": "^4.7"
     },
     "support": {
         "issues": "https://github.com/denis-korchagin95/fs-control/issues"

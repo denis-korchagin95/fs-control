@@ -55,6 +55,7 @@ const CLI_CODE_VIOLATION_PATHS = 2;
 const CLI_CODE_UNCOVERED_PATHS = 3;
 const CLI_CODE_UNBOUNDED_PATHS = 4;
 const CLI_CODE_EXTENSION_ERROR = 5;
+const VERSION = '1.2.0';
 
 $configFile = null;
 
@@ -66,6 +67,7 @@ $showBoundedPaths = false;
 $failOnUncoveredPaths = false;
 $failOnUnboundedPaths = false;
 $isNeedToShowHelp = false;
+$isNeedToShowVersion = false;
 $explain = false;
 
 foreach ($argv as $index => $argument) {
@@ -74,6 +76,10 @@ foreach ($argv as $index => $argument) {
     }
     if ($argument === '--help') {
         $isNeedToShowHelp = true;
+        break;
+    }
+    if ($argument === '--version') {
+        $isNeedToShowVersion = true;
         break;
     }
     if ($argument === '--show-uncovered-paths') {
@@ -124,7 +130,8 @@ if ($isNeedToShowHelp) {
 Usage: fs-control [FILE] [OPTION]...
 
 Options:
-        --help                     Displays help message
+        --help                     Displays this usage information
+        --version                  Displays the version
         --show-uncovered-paths     Show uncovered paths (out of rules)
         --show-unbounded-paths     Show unbounded paths (not configured for tool in binding section)
         --show-excluded-paths      Show excluded paths
@@ -137,6 +144,11 @@ Options:
 
 OUTPUT
     );
+    exit(CLI_CODE_OK);
+}
+
+if ($isNeedToShowVersion) {
+    fwrite(STDERR, 'fs-control ' . VERSION . PHP_EOL);
     exit(CLI_CODE_OK);
 }
 

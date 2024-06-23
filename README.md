@@ -1,29 +1,36 @@
 # fs-control
 
-fs-control is an analyzer for you directory tree to allow you to keep it under control.
+fs-control is an analyzer for your directory tree to allow you to keep it under control.
 
-Maybe you have some agreements in your project and rules to directory tree, but actually in real life it may not work on 100%.
+Maybe you have some agreements in your project and rules to the directory tree,
+but actually in real life it may not work on 100%.
 This tool can allow you to define your variant of configuration and help you to fix that and control.
 
-If you mindset change about the directory tree, okay it's cool.
+If your mindset changes about the directory tree, okay, it's cool.
 Just edit configuration and fs-control will care about for you.
-Also set you free from some "review battles" and allow to concentrate on more important things.
+Also set you free from some "review battles" and allow you to concentrate on more important things.
 
 ## Getting started
 
-You can install fs-control via Composer.
+You can install fs-control via Composer using the main `composer.json`:
 
-```
+```console
 composer require --dev denis-korchagin95/fs-control
 ```
 
-You can analyze the project using a configuration file for some project.
+Or you may to install fs-control via Composer in a dedicated `composer.json`,
+for example, in the `tools/fs-control` directory:
 
-```
-./vendor/bin/fs-control example-fs-config.yaml
+```console
+mkdir -p tools/fs-control
+composer require --working-dir=tools/fs-control denis-korchagin95/fs-control
 ```
 
-The configuration file may look like:
+## Usage
+
+You need to create a configuration file for a whole project or just its small part.
+
+The basic configuration file may look like:
 
 ```yaml
 fs_control:
@@ -48,69 +55,19 @@ fs_control:
       - Application
 ```
 
-## How to write the configuration file?
+You can analyze the project using a configuration file for some project.
 
-The configuration based on simple tree things:
-
-* Groups - some semantic name; name of the part of you project, for example
-* Bindings - the binding path where located some elements from one of a group that you specify
-* Rules - describes whether in which group the target directory can be placed
-
-You can write the configuration incrementally by set at least one group and at least one binding.
-After that try it out with '' flag and it will show you uncovered paths. (because you have no rules yet)
-
-For example, if you edit the `example-fs-config.yaml` to this variant:
-
-```yaml
-fs_control:
-  paths:
-    - ./example-fs/Shared
-  groups:
-    Application: ~
-    Domain: ~
-    Infrastructure: ~
-  bindings: # <path pattern> -> group
-    $/Application: Application
-    $/Domain: Domain
-    $/Infrastructure: Infrastructure
+```console
+./vendor/bin/fs-control example-fs-config.yaml
 ```
 
-And run it by `./vendor/bin/fs-control example-fs-config.yaml --show-uncovered-paths` you see results:
+See [usage](./docs/usage.md), [tool concepts](./docs/concepts.md),
+[built-in extension list](./docs/built_in_extensions.md),
+and [config reference](./docs/config_reference.md) documentation for more examples and details.
 
-```text
-Uncovered Paths:
-/path/to/your/directory/fs-control/example-fs/Shared/Domain/Entity
-/path/to/your/directory/fs-control/example-fs/Shared/Infrastructure/ParamConverter
-/path/to/your/directory/fs-control/example-fs/Shared/Infrastructure/ParamConverter/Check
-/path/to/your/directory/fs-control/example-fs/Shared/Application/Command
+If you need to solve your specific problems that are not supported by the tool,
+you can [create a custom extension](./docs/create_custom_extension.md).
 
-Violation Paths: 0
-Uncovered Paths: 4
-Unbounded Paths: 0
-Allowed Paths: 0
-Bounded Paths: 3
-```
+## Contribute
 
-And then decide which directories are acceptable and which one not
-
-## Violations
-
-If you put the breaking change by the rules to your directory tree you will see the violations:
-
-```text
-Violation Paths:
-/path/to/your/directory/fs-control/example-fs/Shared/Application/ParamConverter
-
-Violation Paths: 1
-Uncovered Paths: 0
-Unbounded Paths: 0
-Allowed Paths: 3
-Bounded Paths: 3
-```
-
-You can fix it and enjoy of the results ;-)
-
-## CI
-
-The fs-control will return the different codes for some situations,
-and you could easily check it and use it as a ci pipeline tool.
+Any contributions are welcome. This repository is open to pull requests.

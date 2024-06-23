@@ -1,20 +1,13 @@
 fs_control:
-#  extensions:
-#    - FsControl\BuiltInExtension\SymfonyExcludeServiceChecker\Extension
-#  symfony_exclude_service_checker:
-#    configs:
-#      - /path/to/your/symfony_config
   parameters:
     deny_nested_rules: true
   paths:
-    - ./example-fs/Shared
-  exclude_paths:
-    - ./example-fs/Shared/Infrastructure/ParamConverter/Check
+    - ./path/to/your/project
   groups:
     Application: ~
     Domain: ~
     Infrastructure: ~
-  bindings: # <path pattern> -> group
+  bindings:
     $/Application: Application
     $/Domain: Domain
     $/Infrastructure: Infrastructure
@@ -22,7 +15,7 @@ fs_control:
     _defaults:
       allowed_subdirectory_level: 2
       treat_exceed_subdirectory_level_as_fault: true
-  rules: # <directory name> -> [group, ...]
+  rules:
     Entity:
       - Domain
     ParamConverter:

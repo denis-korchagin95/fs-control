@@ -200,6 +200,19 @@ Bounded Paths: 3
 Allowed Paths: 3
 ```
 
+If the directory you want to suppress has children that should also be excluded,
+use `exclude_dirs` instead of `exclude_paths`.
+`exclude_dirs` excludes the given directory and everything nested under it:
+
+```yaml
+fs_control:
+  exclude_dirs:
+    - ./example-fs/Shared/Domain/Legacy
+```
+
+Every path inside `./example-fs/Shared/Domain/Legacy` will appear in `Excluded Paths`
+without having to list each one individually.
+
 Congratulations, now you know that how to solve the most important errors using `fs-control`.
 
 ## Unbounded paths

@@ -31,6 +31,11 @@ class Configuration
     /**
      * @var string[]
      */
+    private array $excludeDirs = [];
+
+    /**
+     * @var string[]
+     */
     private array $groups = [];
 
     /**
@@ -91,6 +96,16 @@ class Configuration
         return in_array($path, $this->excludePaths, true);
     }
 
+    public function isPathExcludedByDir(string $path): bool
+    {
+        foreach ($this->excludeDirs as $dir) {
+            if ($path === $dir || str_starts_with($path, $dir . DIRECTORY_SEPARATOR)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function getBindingForPath(string $path): ?Binding
     {
         foreach ($this->bindings as $binding) {
@@ -134,6 +149,17 @@ class Configuration
             throw new DuplicateConfigurationEntryException('The duplicated exclude path "' . $path . '"!');
         }
         $this->excludePaths[] = $path;
+    }
+
+    /**
+     * @throws DuplicateConfigurationEntryException
+     */
+    public function addExcludeDir(string $path): void
+    {
+        if (in_array($path, $this->excludeDirs, true)) {
+            throw new DuplicateConfigurationEntryException('The duplicated exclude dir "' . $path . '"!');
+        }
+        $this->excludeDirs[] = $path;
     }
 
     /**
@@ -203,6 +229,14 @@ class Configuration
     public function getExcludePaths(): array
     {
         return array_values($this->excludePaths);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getExcludeDirs(): array
+    {
+        return array_values($this->excludeDirs);
     }
 
     /**

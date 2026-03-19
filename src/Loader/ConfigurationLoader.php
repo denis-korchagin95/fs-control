@@ -49,6 +49,7 @@ class ConfigurationLoader
 
         $this->resolvePaths($configuration, $rawConfiguration['fs_control']['paths'] ?? []);
         $this->resolveExcludePaths($configuration, $rawConfiguration['fs_control']['exclude_paths'] ?? []);
+        $this->resolveExcludeDirs($configuration, $rawConfiguration['fs_control']['exclude_dirs'] ?? []);
         $this->resolveGroups($configuration, $rawConfiguration['fs_control']['groups'] ?? []);
         $this->resolveBindings($configuration, $rawConfiguration['fs_control']['bindings'] ?? []);
         $this->resolveRules($configuration, $rawConfiguration['fs_control']['rules'] ?? []);
@@ -96,6 +97,22 @@ class ConfigurationLoader
                 throw new ConfigurationLoaderException('Can\'t resolve the path "' . $path . '"!');
             }
             $configuration->addExcludePath($resolvedPath);
+        }
+    }
+
+    /**
+     * @param string[] $paths
+     * @throws ConfigurationLoaderException
+     * @throws DuplicateConfigurationEntryException
+     */
+    private function resolveExcludeDirs(Configuration $configuration, array $paths): void
+    {
+        foreach ($paths as $path) {
+            $resolvedPath = realpath($path);
+            if ($resolvedPath === false) {
+                throw new ConfigurationLoaderException('Can\'t resolve the exclude dir "' . $path . '"!');
+            }
+            $configuration->addExcludeDir($resolvedPath);
         }
     }
 

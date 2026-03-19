@@ -80,6 +80,28 @@ fs_control:
 Typically, you can use the exclude path feature to avoid project restructuring when you first tune the `fs-control`,
 or to ignore errors until you are ready to fix them.
 
+## Excluding directories
+
+To exclude a directory and everything inside it from analysis, use `exclude_dirs`:
+
+```yaml
+fs_control:
+  paths:
+    - ./example-fs/Shared
+  exclude_dirs:
+    - ./example-fs/Shared/Infrastructure/Legacy
+  groups:
+    Application: ~
+  bindings:
+    $/Application: Application
+  rules:
+    Permission:
+      - Application
+```
+
+Unlike `exclude_paths` which matches a single path exactly, `exclude_dirs` excludes the given directory
+and all paths nested under it.
+
 ## Parameters
 
 Parameters can be used by built-in `fs-control` functions or its extensions in the section `parameters`.

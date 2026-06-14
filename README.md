@@ -35,9 +35,9 @@ The basic configuration file may look like:
 ```yaml
 fs_control:
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   exclude_paths:
-    - ./example-fs/Shared/Infrastructure/ParamConverter/Check
+    - ./example-fs/Container/Infrastructure/ParamConverter/Check
   groups:
     Application: ~
     Domain: ~

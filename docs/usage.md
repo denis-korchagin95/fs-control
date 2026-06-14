@@ -4,11 +4,11 @@ Assume that we have a file structure, for example:
 
 ```console
 example-fs
-├── Book
+├── Module
 │   └── Application
-│       └── Book
+│       └── Module
 │           └── Command
-└── Shared
+└── Container
     ├── Application
     │   └── Command
     ├── Domain
@@ -24,7 +24,7 @@ fs_control:
   parameters:
     deny_nested_rules: true
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   groups:
     Application: ~
     Domain: ~
@@ -60,11 +60,11 @@ by either fixing the file structure or ignoring the error.
 Add one folder to your structure:
 ```console
 example-fs
-├── Book
+├── Module
 │   └── Application
-│       └── Book
+│       └── Module
 │           └── Command
-└── Shared
+└── Container
     ├── Application
     │   └── Command
     ├── Domain
@@ -83,7 +83,7 @@ Let's run it:
 And we immediately have a violation:
 ```console
 Violation Paths:
-/path/to/your/project/example-fs/Shared/Infrastructure/ParamConverter/Service
+/path/to/your/project/example-fs/Container/Infrastructure/ParamConverter/Service
 
 Violation Paths: 1
 Uncovered Paths: 0
@@ -102,7 +102,7 @@ If we cannot understand what's going on, then we just repeat the command with `-
 For now, it's clearer by explanation provided by the tool (nested set error):
 ```console
 Violation Paths:
-/path/to/your/project/example-fs/Shared/Infrastructure/ParamConverter/Service
+/path/to/your/project/example-fs/Container/Infrastructure/ParamConverter/Service
   The path attempts to share a few rules (ParamConverter, Service) when nested rules were denied
 
 
@@ -119,11 +119,11 @@ Let's change the file structure up to:
 
 ```console
 example-fs
-├── Book
+├── Module
 │   └── Application
-│       └── Book
+│       └── Module
 │           └── Command
-└── Shared
+└── Container
     ├── Application
     │   └── Command
     ├── Domain
@@ -142,7 +142,7 @@ And now we will get another type of errors (rule-breaking):
 
 ```console
 Violation Paths:
-/path/to/your/project/example-fs/Shared/Domain/ParamConverter
+/path/to/your/project/example-fs/Container/Domain/ParamConverter
   The path is permitted under the "ParamConverter" rule to be part of groups (Infrastructure), but it is located in the "Domain" group
 
 
@@ -161,9 +161,9 @@ fs_control:
   parameters:
     deny_nested_rules: true
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   exclude_paths:
-    - ./example-fs/Shared/Domain/ParamConverter
+    - ./example-fs/Container/Domain/ParamConverter
   groups:
     Application: ~
     Domain: ~
@@ -207,10 +207,10 @@ use `exclude_dirs` instead of `exclude_paths`.
 ```yaml
 fs_control:
   exclude_dirs:
-    - ./example-fs/Shared/Domain/Legacy
+    - ./example-fs/Container/Domain/Legacy
 ```
 
-Every path inside `./example-fs/Shared/Domain/Legacy` will appear in `Excluded Paths`
+Every path inside `./example-fs/Container/Domain/Legacy` will appear in `Excluded Paths`
 without having to list each one individually.
 
 Congratulations, now you know that how to solve the most important errors using `fs-control`.
@@ -226,9 +226,9 @@ fs_control:
   parameters:
     deny_nested_rules: true
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   exclude_paths:
-    - ./example-fs/Shared/Domain/ParamConverter
+    - ./example-fs/Container/Domain/ParamConverter
   groups:
     Application: ~
     Infrastructure: ~
@@ -258,8 +258,8 @@ and we will see:
 
 ```console
 Unbounded Paths:
-/path/to/your/project/example-fs/Shared/Domain
-/path/to/your/project/example-fs/Shared/Domain/Entity
+/path/to/your/project/example-fs/Container/Domain
+/path/to/your/project/example-fs/Container/Domain/Entity
 
 Violation Paths: 0
 Uncovered Paths: 0
@@ -282,9 +282,9 @@ fs_control:
   parameters:
     deny_nested_rules: true
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   exclude_paths:
-    - ./example-fs/Shared/Domain/ParamConverter
+    - ./example-fs/Container/Domain/ParamConverter
   groups:
     Application: ~
     Infrastructure: ~
@@ -312,7 +312,7 @@ And run the tool:
 You should see something like this:
 ```console
 Uncovered Paths:
-/path/to/your/project/example-fs/Shared/Application/Command
+/path/to/your/project/example-fs/Container/Application/Command
 
 Violation Paths: 0
 Uncovered Paths: 1
@@ -335,17 +335,17 @@ Just for your information purpose, you can run:
 And it will show you paths output look like:
 ```console
 Excluded Paths:
-/path/to/your/project/example-fs/Shared/Domain/ParamConverter
+/path/to/your/project/example-fs/Container/Domain/ParamConverter
 
 Bounded Paths:
-/path/to/your/project/example-fs/Shared/Application
-/path/to/your/project/example-fs/Shared/Infrastructure
-/path/to/your/project/example-fs/Shared/Domain
+/path/to/your/project/example-fs/Container/Application
+/path/to/your/project/example-fs/Container/Infrastructure
+/path/to/your/project/example-fs/Container/Domain
 
 Allowed Paths:
-/path/to/your/project/example-fs/Shared/Domain/Entity
-/path/to/your/project/example-fs/Shared/Infrastructure/Service
-/path/to/your/project/example-fs/Shared/Application/Command
+/path/to/your/project/example-fs/Container/Domain/Entity
+/path/to/your/project/example-fs/Container/Infrastructure/Service
+/path/to/your/project/example-fs/Container/Application/Command
 
 Violation Paths: 0
 Uncovered Paths: 0
@@ -367,7 +367,7 @@ and `treat_exceed_subdirectory_level_as_fault` as true to `rule_attributes` sect
 ```yaml
 fs_control:
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   parameters:
     deny_nested_rules: true
   groups:
@@ -418,9 +418,9 @@ minimal diffs:
 
 ```yaml
 violations:
-    - example-fs/Shared/Domain/ParamConverter
+    - example-fs/Container/Domain/ParamConverter
 uncovered:
-    - example-fs/Shared/Application/Command
+    - example-fs/Container/Application/Command
 ```
 
 Then wire the baseline into your CI run. Findings listed in the baseline are moved to

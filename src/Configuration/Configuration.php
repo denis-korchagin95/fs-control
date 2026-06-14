@@ -88,7 +88,8 @@ class Configuration
                 return true;
             }
         }
-        return false;
+        $match = $this->getBindingForPath($path);
+        return $match !== null && $match->mountPath === $path;
     }
 
     public function isPathExcluded(string $path): bool
@@ -106,14 +107,31 @@ class Configuration
         return false;
     }
 
-    public function getBindingForPath(string $path): ?Binding
+    public function getBindingForPath(string $path): ?BindingMatch
     {
+        $isRule = fn (string $segment): bool => $this->findRuleByName($segment) !== null;
+
+        $best = null;
+        $bestLength = -1;
         foreach ($this->bindings as $binding) {
-            if (str_starts_with($path, $binding->getResolvedBindingPath() . DIRECTORY_SEPARATOR)) {
-                return $binding;
+            $mountPath = $binding->matchMountPoint($path, $isRule);
+            if ($mountPath === null) {
+                continue;
+            }
+            $length = strlen($mountPath);
+            if (
+                $length > $bestLength
+                || (
+                    $length === $bestLength
+                    && $best !== null
+                    && $binding->specificityRank() > $best->binding->specificityRank()
+                )
+            ) {
+                $best = new BindingMatch($binding, $mountPath);
+                $bestLength = $length;
             }
         }
-        return null;
+        return $best;
     }
 
     /**

@@ -76,11 +76,78 @@ class ConfigurationLoader
     private function resolvePaths(Configuration $configuration, array $paths): void
     {
         foreach ($paths as $path) {
+            foreach ($this->resolvePathPattern($path) as $resolvedPath) {
+                $configuration->addPath($resolvedPath);
+            }
+        }
+    }
+
+    /**
+     * Resolves a single "paths" entry to one or more absolute directories. A literal path
+     * resolves to itself; a path ending with a single "*" expands to its immediate
+     * subdirectories, so sub-contexts can be covered without listing each one.
+     *
+     * @return string[]
+     *
+     * @throws ConfigurationLoaderException
+     */
+    private function resolvePathPattern(string $path): array
+    {
+        if (! str_contains($path, '*')) {
             $resolvedPath = realpath($path);
             if ($resolvedPath === false) {
                 throw new ConfigurationLoaderException('Can\'t resolve the path "' . $path . '"!');
             }
-            $configuration->addPath($resolvedPath);
+            return [$resolvedPath];
+        }
+
+        $this->assertTailSingleStarPath($path);
+
+        $resolvedParent = realpath(dirname($path));
+        if ($resolvedParent === false) {
+            throw new ConfigurationLoaderException('Can\'t resolve the path "' . $path . '"!');
+        }
+
+        $entries = scandir($resolvedParent);
+        if ($entries === false) {
+            return [];
+        }
+
+        $resolvedPaths = [];
+        foreach ($entries as $entry) {
+            if (str_starts_with($entry, '.')) {
+                continue;
+            }
+            $childPath = $resolvedParent . DIRECTORY_SEPARATOR . $entry;
+            if (! is_dir($childPath)) {
+                continue;
+            }
+            $resolvedChild = realpath($childPath);
+            if ($resolvedChild === false) {
+                continue;
+            }
+            $resolvedPaths[] = $resolvedChild;
+        }
+        sort($resolvedPaths);
+        return $resolvedPaths;
+    }
+
+    /**
+     * For "paths" only a single "*" as the whole last segment is allowed.
+     *
+     * @throws ConfigurationLoaderException
+     */
+    private function assertTailSingleStarPath(string $path): void
+    {
+        $segments = explode(DIRECTORY_SEPARATOR, $path);
+        $lastIndex = count($segments) - 1;
+        foreach ($segments as $index => $segment) {
+            if ($segment === '*' && $index === $lastIndex) {
+                continue;
+            }
+            if (str_contains($segment, '*')) {
+                throw ConfigurationLoaderException::invalidPathPattern($path);
+            }
         }
     }
 

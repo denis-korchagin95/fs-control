@@ -42,9 +42,9 @@ The output may include extension's section something like this after that:
 
 ```output
 Found violations for config: /path/to/your/symfony_config/services.yaml
-   Section App\Context\Shared\:
+   Section App\Context\Container\:
        Not excluded paths:
-           ./example-fs/Shared/Infrastructure/View
+           ./example-fs/Container/Infrastructure/View
        Broken paths:
-           ../../../example-fs/Shared/Application/View/
+           ../../../example-fs/Container/Application/View/
 ```

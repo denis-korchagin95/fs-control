@@ -197,16 +197,18 @@ class Application
     private function preparePathHandleContext(string $rootPath, string $directoryPath): PathHandleContext
     {
         $relativePath = ltrim(str_replace($rootPath, '', $directoryPath), DIRECTORY_SEPARATOR);
-        $binding = $this->configuration->getBindingForPath($relativePath);
+        $match = $this->configuration->getBindingForPath($relativePath);
+        $binding = $match?->binding;
         $directoryName = null;
-        if ($binding !== null) {
-            $directoryName = str_replace($binding->getResolvedBindingPath(), '', $relativePath);
-            $directoryName = ltrim($directoryName, DIRECTORY_SEPARATOR);
+        if ($match !== null) {
+            $directoryName = ltrim(substr($relativePath, strlen($match->mountPath)), DIRECTORY_SEPARATOR);
+            if ($directoryName === '') {
+                $directoryName = null;
+            }
         }
-        $rule = null;
-        if ($directoryName !== null) {
-            $rule = $this->configuration->findRuleByName($directoryName);
-        }
+        $rule = $directoryName !== null
+            ? $this->configuration->findRuleByName($directoryName)
+            : null;
         return new PathHandleContext(
             $rootPath,
             $directoryPath,

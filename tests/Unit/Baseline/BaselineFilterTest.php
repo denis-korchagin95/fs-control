@@ -39,6 +39,8 @@ class BaselineFilterTest extends TestCase
         $result->addUnboundedPath('/root/Baz/New', 'reason');
         $result->addAllowedPath('/root/Foo/Allowed', 'allowed');
         $result->addBoundedPath('/root/Foo', 'bounded');
+        $result->addExcludedPath('/root/Foo/Skip', 'excluded path');
+        $result->addExcludedDir('/root/Foo/Doc', 'excluded dir');
 
         $baseline = Baseline::fromPaths(
             ['Foo/Known'],
@@ -69,6 +71,14 @@ class BaselineFilterTest extends TestCase
         self::assertSame(
             [['path' => '/root/Foo', 'description' => 'bounded']],
             $activeResult->getBoundedPaths(),
+        );
+        self::assertSame(
+            [['path' => '/root/Foo/Skip', 'description' => 'excluded path']],
+            $activeResult->getExcludedPaths(),
+        );
+        self::assertSame(
+            [['path' => '/root/Foo/Doc', 'description' => 'excluded dir']],
+            $activeResult->getExcludedDirs(),
         );
 
         // the baselined findings are reported with their original absolute path

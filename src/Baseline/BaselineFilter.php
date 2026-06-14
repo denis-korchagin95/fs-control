@@ -41,6 +41,9 @@ class BaselineFilter
         foreach ($result->getExcludedPaths() as $excludedPath) {
             $filtered->addExcludedPath($excludedPath['path'], $excludedPath['description']);
         }
+        foreach ($result->getExcludedDirs() as $excludedDir) {
+            $filtered->addExcludedDir($excludedDir['path'], $excludedDir['description']);
+        }
 
         /** @var array{path: string, category: string}[] $baselinedPaths */
         $baselinedPaths = [];

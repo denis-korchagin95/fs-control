@@ -111,7 +111,7 @@ class BaselineWriter
     }
 
     /**
-     * @param array<int, array<string, string>> $paths
+     * @param array<array<string, string>> $paths
      *
      * @return list<string>
      */

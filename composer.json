@@ -14,9 +14,9 @@
     "require-dev": {
         "roave/security-advisories": "dev-latest",
         "phpunit/phpunit": "^9.5",
-        "phpstan/phpstan": "^1.9",
+        "phpstan/phpstan": "^2.0",
         "mikey179/vfsstream": "^1.6",
-        "phpstan/phpstan-strict-rules": "^1.4",
+        "phpstan/phpstan-strict-rules": "^2.0",
         "slevomat/coding-standard": "^8.6"
     },
     "prefer-stable": true,

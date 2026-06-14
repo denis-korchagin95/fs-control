@@ -15,6 +15,7 @@ namespace FsControl\Loader;
 
 use FilesystemIterator;
 use RecursiveDirectoryIterator;
+use SplFileInfo;
 
 use function array_pop;
 
@@ -44,6 +45,9 @@ class DirectoryTreeLoader
         while (count($stack) > 0) {
             $currentIterator = array_pop($stack);
             foreach ($currentIterator as $entry) {
+                if (! $entry instanceof SplFileInfo) {
+                    continue;
+                }
                 if (! $entry->isDir()) {
                     continue;
                 }

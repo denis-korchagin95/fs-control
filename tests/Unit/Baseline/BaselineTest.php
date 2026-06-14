@@ -90,8 +90,6 @@ class BaselineTest extends TestCase
             $baseline->extensionCategories(),
         );
         self::assertSame(['Foo/Infrastructure/View'], $baseline->categoryValues('some_extension:not_excluded'));
-        // core categories are not reported as extension categories
-        self::assertFalse(in_array(Baseline::CATEGORY_VIOLATION, $baseline->extensionCategories(), true));
     }
 
     /**

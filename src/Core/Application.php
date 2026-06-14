@@ -13,11 +13,16 @@ declare(strict_types=1);
 
 namespace FsControl\Core;
 
+use FsControl\Baseline\Baseline;
 use FsControl\Configuration\Configuration;
 use FsControl\Configuration\Rule;
 use FsControl\Exception\ExtensionException;
+use FsControl\Extension\BaselineAwareExtension;
 use FsControl\Extension\ExtensionInterface;
 use FsControl\Loader\DirectoryTreeLoader;
+
+use function array_values;
+use function array_unique;
 
 class Application
 {
@@ -37,8 +42,51 @@ class Application
     public function __construct(
         private readonly DirectoryTreeLoader $directoryTreeLoader,
         private readonly Configuration $configuration,
+        private readonly ?Baseline $baseline = null,
+        private readonly ?PathNormalizer $pathNormalizer = null,
     ) {
         $this->loadExtensions();
+    }
+
+    /**
+     * Whether a finding produced by an extension is recorded in the baseline.
+     */
+    public function isFindingBaselined(string $category, string $identity): bool
+    {
+        return $this->baseline?->has($category, $identity) ?? false;
+    }
+
+    /**
+     * Normalizes an absolute path to a project-relative identity (when a project root is known),
+     * so extension findings are keyed the same way as core findings in the baseline.
+     */
+    public function toProjectRelativePath(string $absolutePath): string
+    {
+        return $this->pathNormalizer?->toRelative($absolutePath) ?? $absolutePath;
+    }
+
+    /**
+     * Aggregates the current findings of every baseline-aware extension.
+     *
+     * @return array<string, list<string>> namespaced category => identities
+     */
+    public function collectExtensionBaselineFindings(): array
+    {
+        $findings = [];
+        foreach ($this->extensions as $extension) {
+            if (! $extension instanceof BaselineAwareExtension) {
+                continue;
+            }
+            foreach ($extension->collectBaselineFindings($this) as $category => $identities) {
+                foreach ($identities as $identity) {
+                    $findings[$category][] = $identity;
+                }
+            }
+        }
+        foreach ($findings as $category => $identities) {
+            $findings[$category] = array_values(array_unique($identities));
+        }
+        return $findings;
     }
 
     /**
@@ -68,11 +116,15 @@ class Application
                 continue;
             }
             if ($this->configuration->isPathExcludedByDir($directoryPath)) {
-                $result->addExcludedPath(
-                    $directoryPath,
-                    'The path was excluded from analysis by the dir in the config "'
-                    . $this->configuration->getConfigName() . '"',
-                );
+                // report only the configured/expanded exclude-dir roots, not every descendant
+                // swept up under them (descendants are still skipped from analysis).
+                if ($this->configuration->isExcludeDirRoot($directoryPath)) {
+                    $result->addExcludedDir(
+                        $directoryPath,
+                        'The path was excluded from analysis by the dir in the config "'
+                        . $this->configuration->getConfigName() . '"',
+                    );
+                }
                 continue;
             }
             $pathHandleContext = $this->preparePathHandleContext($path, $directoryPath);
@@ -197,16 +249,18 @@ class Application
     private function preparePathHandleContext(string $rootPath, string $directoryPath): PathHandleContext
     {
         $relativePath = ltrim(str_replace($rootPath, '', $directoryPath), DIRECTORY_SEPARATOR);
-        $binding = $this->configuration->getBindingForPath($relativePath);
+        $match = $this->configuration->getBindingForPath($relativePath);
+        $binding = $match?->binding;
         $directoryName = null;
-        if ($binding !== null) {
-            $directoryName = str_replace($binding->getResolvedBindingPath(), '', $relativePath);
-            $directoryName = ltrim($directoryName, DIRECTORY_SEPARATOR);
+        if ($match !== null) {
+            $directoryName = ltrim(substr($relativePath, strlen($match->mountPath)), DIRECTORY_SEPARATOR);
+            if ($directoryName === '') {
+                $directoryName = null;
+            }
         }
-        $rule = null;
-        if ($directoryName !== null) {
-            $rule = $this->configuration->findRuleByName($directoryName);
-        }
+        $rule = $directoryName !== null
+            ? $this->configuration->findRuleByName($directoryName)
+            : null;
         return new PathHandleContext(
             $rootPath,
             $directoryPath,

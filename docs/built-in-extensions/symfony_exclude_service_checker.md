@@ -22,6 +22,18 @@ fs_control:
   # rest of the config ...
 ```
 
+A `configs` entry may be a glob (any entry containing `*`), so one `services.yaml` per context
+need not be listed by hand — `**` matches any number of directories:
+
+```yaml
+fs_control:
+  symfony_exclude_service_checker:
+    configs:
+      - config/*/services.yaml
+```
+
+A glob that matches no files is skipped; a literal entry that cannot be resolved is still an error.
+
 For this setting, it will be checked only the broken paths.
 If you check the not excluded paths, you need to mark non-service rules in the rule attributes section.
 
@@ -42,9 +54,25 @@ The output may include extension's section something like this after that:
 
 ```output
 Found violations for config: /path/to/your/symfony_config/services.yaml
-   Section App\Context\Shared\:
+   Section App\Container\:
        Not excluded paths:
-           ./example-fs/Shared/Infrastructure/View
+           ./example-fs/Container/Infrastructure/View
        Broken paths:
-           ../../../example-fs/Shared/Application/View/
+           ../../../example-fs/Container/Application/View/
+```
+
+## Baseline
+
+This extension takes part in the [baseline](../usage.md#baseline) workflow. Both finding
+kinds can be suppressed: not-excluded paths (category `not_excluded`) and broken paths
+(category `broken`). Run `--generate-baseline=FILE` to capture the current findings, then
+`--baseline=FILE` to suppress them — only newly introduced findings will fail afterwards:
+
+```yaml
+extensions:
+    symfony_exclude_service_checker:
+        not_excluded:
+            - example-fs/Container/Infrastructure/View
+        broken:
+            - "example-fs/Container/config/services.yaml::../../../example-fs/Container/Application/View/"
 ```

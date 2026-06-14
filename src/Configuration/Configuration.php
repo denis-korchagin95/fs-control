@@ -15,6 +15,15 @@ namespace FsControl\Configuration;
 
 use FsControl\Exception\DuplicateConfigurationEntryException;
 use FsControl\Exception\RuleReferToUnknownGroupException;
+use Webmozart\Glob\Glob;
+
+use function array_pop;
+use function explode;
+use function implode;
+use function in_array;
+use function str_starts_with;
+use function strlen;
+use function substr;
 
 class Configuration
 {
@@ -32,6 +41,16 @@ class Configuration
      * @var string[]
      */
     private array $excludeDirs = [];
+
+    /**
+     * @var string[]
+     */
+    private array $excludePathGlobs = [];
+
+    /**
+     * @var string[]
+     */
+    private array $excludeDirGlobs = [];
 
     /**
      * @var string[]
@@ -88,12 +107,16 @@ class Configuration
                 return true;
             }
         }
-        return false;
+        $match = $this->getBindingForPath($path);
+        return $match !== null && $match->mountPath === $path;
     }
 
     public function isPathExcluded(string $path): bool
     {
-        return in_array($path, $this->excludePaths, true);
+        if (in_array($path, $this->excludePaths, true)) {
+            return true;
+        }
+        return $this->matchesGlob($path, $this->excludePathGlobs, false);
     }
 
     public function isPathExcludedByDir(string $path): bool
@@ -103,17 +126,111 @@ class Configuration
                 return true;
             }
         }
+        return $this->matchesGlob($path, $this->excludeDirGlobs, true);
+    }
+
+    /**
+     * Whether the path is a directory directly listed in exclude_dirs (literal) or directly
+     * matched by an exclude_dirs glob — i.e. a configured exclude root, not merely a descendant
+     * swept up under one. Used to report only the introduced/expanded exclude dirs.
+     */
+    public function isExcludeDirRoot(string $path): bool
+    {
+        foreach ($this->excludeDirs as $dir) {
+            if ($path === $dir) {
+                return true;
+            }
+        }
+        return $this->matchesGlob($path, $this->excludeDirGlobs, false);
+    }
+
+    /**
+     * Matches a scanned path against exclude globs, anchored to the scan root it lives under.
+     * When $includeSubtree is true a glob also matches everything nested (at any depth) under a
+     * matching directory — checked by walking the path's ancestors, since a trailing "**" only
+     * matches a single segment in webmozart/glob.
+     *
+     * @param string[] $globs
+     */
+    private function matchesGlob(string $path, array $globs, bool $includeSubtree): bool
+    {
+        $relativePath = $this->toScanRelative($path);
+        if ($relativePath === null) {
+            return false;
+        }
+        if ($this->relativePathMatchesGlob($relativePath, $globs)) {
+            return true;
+        }
+        if (! $includeSubtree) {
+            return false;
+        }
+        $segments = explode(DIRECTORY_SEPARATOR, $relativePath);
+        array_pop($segments);
+        while ($segments !== []) {
+            if ($this->relativePathMatchesGlob(implode(DIRECTORY_SEPARATOR, $segments), $globs)) {
+                return true;
+            }
+            array_pop($segments);
+        }
         return false;
     }
 
-    public function getBindingForPath(string $path): ?Binding
+    /**
+     * @param string[] $globs
+     */
+    private function relativePathMatchesGlob(string $relativePath, array $globs): bool
     {
-        foreach ($this->bindings as $binding) {
-            if (str_starts_with($path, $binding->getResolvedBindingPath() . DIRECTORY_SEPARATOR)) {
-                return $binding;
+        foreach ($globs as $glob) {
+            if (Glob::match('/' . $relativePath, '/' . $glob)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns the given path relative to the scan root ("paths" entry) that contains it,
+     * or null when it lives under none of them.
+     */
+    private function toScanRelative(string $path): ?string
+    {
+        foreach ($this->paths as $root) {
+            if ($path === $root) {
+                return '';
+            }
+            $prefix = $root . DIRECTORY_SEPARATOR;
+            if (str_starts_with($path, $prefix)) {
+                return substr($path, strlen($prefix));
             }
         }
         return null;
+    }
+
+    public function getBindingForPath(string $path): ?BindingMatch
+    {
+        $isRule = fn (string $segment): bool => $this->findRuleByName($segment) !== null;
+
+        $best = null;
+        $bestLength = -1;
+        foreach ($this->bindings as $binding) {
+            $mountPath = $binding->matchMountPoint($path, $isRule);
+            if ($mountPath === null) {
+                continue;
+            }
+            $length = strlen($mountPath);
+            if (
+                $length > $bestLength
+                || (
+                    $length === $bestLength
+                    && $best !== null
+                    && $binding->specificityRank() > $best->binding->specificityRank()
+                )
+            ) {
+                $best = new BindingMatch($binding, $mountPath);
+                $bestLength = $length;
+            }
+        }
+        return $best;
     }
 
     /**
@@ -160,6 +277,28 @@ class Configuration
             throw new DuplicateConfigurationEntryException('The duplicated exclude dir "' . $path . '"!');
         }
         $this->excludeDirs[] = $path;
+    }
+
+    /**
+     * @throws DuplicateConfigurationEntryException
+     */
+    public function addExcludePathGlob(string $glob): void
+    {
+        if (in_array($glob, $this->excludePathGlobs, true)) {
+            throw new DuplicateConfigurationEntryException('The duplicated exclude path glob "' . $glob . '"!');
+        }
+        $this->excludePathGlobs[] = $glob;
+    }
+
+    /**
+     * @throws DuplicateConfigurationEntryException
+     */
+    public function addExcludeDirGlob(string $glob): void
+    {
+        if (in_array($glob, $this->excludeDirGlobs, true)) {
+            throw new DuplicateConfigurationEntryException('The duplicated exclude dir glob "' . $glob . '"!');
+        }
+        $this->excludeDirGlobs[] = $glob;
     }
 
     /**
@@ -237,6 +376,22 @@ class Configuration
     public function getExcludeDirs(): array
     {
         return array_values($this->excludeDirs);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getExcludePathGlobs(): array
+    {
+        return array_values($this->excludePathGlobs);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getExcludeDirGlobs(): array
+    {
+        return array_values($this->excludeDirGlobs);
     }
 
     /**

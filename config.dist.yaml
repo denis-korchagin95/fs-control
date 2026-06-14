@@ -8,6 +8,8 @@ fs_control:
     Domain: ~
     Infrastructure: ~
   bindings:
+    # Use a trailing "**" to transparently group sub-domain folders at any depth,
+    # e.g. "$/Domain/**: Domain" covers Domain/<SubDomain>/<Rule> without per-folder lines.
     $/Application: Application
     $/Domain: Domain
     $/Infrastructure: Infrastructure

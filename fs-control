@@ -43,7 +43,11 @@ if (!defined('FS_CONTROL_AUTOLOAD_PATH')) {
 
 require FS_CONTROL_AUTOLOAD_PATH;
 
+use FsControl\Baseline\Baseline;
+use FsControl\Baseline\BaselineFilter;
+use FsControl\Baseline\BaselineWriter;
 use FsControl\Core\Application;
+use FsControl\Core\PathNormalizer;
 use FsControl\Exception\ConfigurationLoaderException;
 use FsControl\Exception\FsControlException;
 use FsControl\Loader\ConfigurationLoader;
@@ -55,13 +59,15 @@ const CLI_CODE_VIOLATION_PATHS = 2;
 const CLI_CODE_UNCOVERED_PATHS = 3;
 const CLI_CODE_UNBOUNDED_PATHS = 4;
 const CLI_CODE_EXTENSION_ERROR = 5;
-const VERSION = '1.2.0';
+const CLI_CODE_STALE_BASELINE = 6;
+const VERSION = '1.3.0';
 
 $configFile = null;
 
 $showUncoveredPaths = false;
 $showUnboundedPaths = false;
 $showExcludedPaths = false;
+$showExcludedDirs = false;
 $showAllowedPaths = false;
 $showBoundedPaths = false;
 $failOnUncoveredPaths = false;
@@ -69,6 +75,10 @@ $failOnUnboundedPaths = false;
 $isNeedToShowHelp = false;
 $isNeedToShowVersion = false;
 $explain = false;
+$baselineFile = null;
+$generateBaselineFile = null;
+$projectRoot = null;
+$failOnStaleBaseline = false;
 
 foreach ($argv as $index => $argument) {
     if ($index === 0) {
@@ -94,6 +104,10 @@ foreach ($argv as $index => $argument) {
         $showExcludedPaths = true;
         continue;
     }
+    if ($argument === '--show-excluded-dirs') {
+        $showExcludedDirs = true;
+        continue;
+    }
     if ($argument === '--show-allowed-paths') {
         $showAllowedPaths = true;
         continue;
@@ -112,6 +126,22 @@ foreach ($argv as $index => $argument) {
     }
     if ($argument === '--explain') {
         $explain = true;
+        continue;
+    }
+    if ($argument === '--fail-on-stale-baseline') {
+        $failOnStaleBaseline = true;
+        continue;
+    }
+    if (str_starts_with($argument, '--baseline=')) {
+        $baselineFile = substr($argument, strlen('--baseline='));
+        continue;
+    }
+    if (str_starts_with($argument, '--generate-baseline=')) {
+        $generateBaselineFile = substr($argument, strlen('--generate-baseline='));
+        continue;
+    }
+    if (str_starts_with($argument, '--project-root=')) {
+        $projectRoot = substr($argument, strlen('--project-root='));
         continue;
     }
     if (str_starts_with($argument, '--')) {
@@ -135,11 +165,16 @@ Options:
         --show-uncovered-paths     Show uncovered paths (out of rules)
         --show-unbounded-paths     Show unbounded paths (not configured for tool in binding section)
         --show-excluded-paths      Show excluded paths
+        --show-excluded-dirs       Show excluded dirs
         --show-allowed-paths       Show allowed paths
         --show-bounded-paths       Show bounded paths
         --fail-on-uncovered-paths  Treat uncovered paths as failures
         --fail-on-unbounded-paths  Treat unbounded paths as failures
         --explain                  Explains why each path is in its category
+        --baseline=FILE            Ignore findings recorded in the baseline file
+        --generate-baseline=FILE   Write the current findings to the baseline file and exit
+        --project-root=DIR         Root used to compute baseline-relative paths (default: cwd)
+        --fail-on-stale-baseline   Fail when the baseline lists findings that no longer occur
 
 
 OUTPUT
@@ -154,6 +189,9 @@ if ($isNeedToShowVersion) {
 
 $directoryTreeLoader = new DirectoryTreeLoader(['.git']);
 $configurationLoader = new ConfigurationLoader();
+$filteredResult = null;
+$extensionBaselinedCount = 0;
+$extensionStalePaths = [];
 try {
     if ($configFile === null) {
         throw new ConfigurationLoaderException('Expected a config file!');
@@ -162,9 +200,49 @@ try {
     if ($resolvedConfigFile === false) {
         throw new ConfigurationLoaderException('The invalid config file "' . $configFile . '"!');
     }
+    $resolvedProjectRoot = $projectRoot !== null ? realpath($projectRoot) : getcwd();
+    if ($resolvedProjectRoot === false) {
+        throw new ConfigurationLoaderException('The invalid project root "' . $projectRoot . '"!');
+    }
+    $pathNormalizer = new PathNormalizer($resolvedProjectRoot);
+    $baseline = $baselineFile !== null ? Baseline::loadFromFile($baselineFile) : null;
     $configuration = $configurationLoader->loadFromFile($resolvedConfigFile);
-    $application = new Application($directoryTreeLoader, $configuration);
+    $application = new Application($directoryTreeLoader, $configuration, $baseline, $pathNormalizer);
     $result = $application->run();
+
+    if ($generateBaselineFile !== null) {
+        $baselineWriter = new BaselineWriter($pathNormalizer);
+        $baselineWriter->writeToFile(
+            $result,
+            $generateBaselineFile,
+            $application->collectExtensionBaselineFindings(),
+        );
+        fwrite(STDOUT, 'The baseline was written to "' . $generateBaselineFile . '".' . PHP_EOL);
+        exit(CLI_CODE_OK);
+    }
+
+    if ($baseline !== null) {
+        $baselineFilter = new BaselineFilter($baseline, $pathNormalizer);
+        $filteredResult = $baselineFilter->apply($result);
+        $result = $filteredResult->getResult();
+
+        $currentExtensionFindings = $application->collectExtensionBaselineFindings();
+        foreach ($currentExtensionFindings as $extensionCategory => $extensionIdentities) {
+            foreach ($extensionIdentities as $extensionIdentity) {
+                if ($baseline->has($extensionCategory, $extensionIdentity)) {
+                    ++$extensionBaselinedCount;
+                }
+            }
+        }
+        foreach ($baseline->extensionCategories() as $extensionCategory) {
+            $current = $currentExtensionFindings[$extensionCategory] ?? [];
+            foreach ($baseline->categoryValues($extensionCategory) as $baselineEntry) {
+                if (! in_array($baselineEntry, $current, true)) {
+                    $extensionStalePaths[] = ['path' => $baselineEntry, 'category' => $extensionCategory];
+                }
+            }
+        }
+    }
 } catch (FsControlException $exception) {
     fwrite(STDERR, $exception->getMessage() . PHP_EOL);
     exit(CLI_CODE_GENERAL_ERROR);
@@ -230,6 +308,20 @@ if (
 }
 
 if (
+    $showExcludedDirs
+    && $result->hasExcludedDirs()
+) {
+    fwrite(STDOUT, 'Excluded Dirs:' . PHP_EOL);
+    foreach ($result->getExcludedDirs() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['description'] . PHP_EOL . PHP_EOL);
+        }
+    }
+    fwrite(STDOUT, PHP_EOL);
+}
+
+if (
     $showBoundedPaths
     && $result->hasBoundedPaths()
 ) {
@@ -257,12 +349,32 @@ if (
     fwrite(STDOUT, PHP_EOL);
 }
 
+$stalePaths = $filteredResult !== null ? $filteredResult->getStalePaths() : [];
+$stalePaths = array_merge($stalePaths, $extensionStalePaths);
+if (count($stalePaths) > 0) {
+    fwrite(STDOUT, 'Stale Baseline Paths:' . PHP_EOL);
+    foreach ($stalePaths as $stalePath) {
+        fwrite(STDOUT, $stalePath['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  No longer reported as "' . $stalePath['category'] . '"' . PHP_EOL . PHP_EOL);
+        }
+    }
+    fwrite(STDOUT, PHP_EOL);
+}
+
 fwrite(STDOUT, 'Violation Paths: ' . $result->getViolationPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Uncovered Paths: ' . $result->getUncoveredPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Unbounded Paths: ' . $result->getUnboundedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Excluded Paths: ' . $result->getExcludedPathCount() . PHP_EOL);
+fwrite(STDOUT, 'Excluded Dirs: ' . $result->getExcludedDirCount() . PHP_EOL);
 fwrite(STDOUT, 'Bounded Paths: ' . $result->getBoundedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Allowed Paths: ' . $result->getAllowedPathCount() . PHP_EOL);
+if ($filteredResult !== null) {
+    fwrite(
+        STDOUT,
+        'Baselined Paths: ' . ($filteredResult->getBaselinedPathCount() + $extensionBaselinedCount) . PHP_EOL,
+    );
+}
 
 $returnCode = $result->hasViolationPaths() ? CLI_CODE_VIOLATION_PATHS : CLI_CODE_OK;
 
@@ -279,6 +391,13 @@ if (
     && $result->hasUnboundedPaths()
 ) {
     $returnCode = CLI_CODE_UNBOUNDED_PATHS;
+}
+if (
+    $returnCode === CLI_CODE_OK
+    && $failOnStaleBaseline
+    && count($stalePaths) > 0
+) {
+    $returnCode = CLI_CODE_STALE_BASELINE;
 }
 
 $isTerminateSucceed = $application->terminate(STDOUT);

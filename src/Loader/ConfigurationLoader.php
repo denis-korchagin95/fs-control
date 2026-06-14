@@ -45,17 +45,22 @@ class ConfigurationLoader
             throw new ConfigurationLoaderException('The root element must be "fs_control"!');
         }
 
+        $rawFsControl = $rawConfiguration['fs_control'];
+        if (! is_array($rawFsControl)) {
+            throw new ConfigurationLoaderException('The "fs_control" element should be an array!');
+        }
+
         $configuration = new Configuration($filePath, $rawConfiguration);
 
-        $this->resolvePaths($configuration, $rawConfiguration['fs_control']['paths'] ?? []);
-        $this->resolveExcludePaths($configuration, $rawConfiguration['fs_control']['exclude_paths'] ?? []);
-        $this->resolveExcludeDirs($configuration, $rawConfiguration['fs_control']['exclude_dirs'] ?? []);
-        $this->resolveGroups($configuration, $rawConfiguration['fs_control']['groups'] ?? []);
-        $this->resolveBindings($configuration, $rawConfiguration['fs_control']['bindings'] ?? []);
-        $this->resolveRules($configuration, $rawConfiguration['fs_control']['rules'] ?? []);
-        $this->resolveRuleAttributes($configuration, $rawConfiguration['fs_control']['rule_attributes'] ?? []);
-        $this->resolveExtensions($configuration, $rawConfiguration['fs_control']['extensions'] ?? []);
-        $this->resolveParameters($configuration, $rawConfiguration['fs_control']['parameters'] ?? []);
+        $this->resolvePaths($configuration, $this->arraySection($rawFsControl, 'paths'));
+        $this->resolveExcludePaths($configuration, $this->arraySection($rawFsControl, 'exclude_paths'));
+        $this->resolveExcludeDirs($configuration, $this->arraySection($rawFsControl, 'exclude_dirs'));
+        $this->resolveGroups($configuration, $this->arraySection($rawFsControl, 'groups'));
+        $this->resolveBindings($configuration, $this->arraySection($rawFsControl, 'bindings'));
+        $this->resolveRules($configuration, $this->arraySection($rawFsControl, 'rules'));
+        $this->resolveRuleAttributes($configuration, $this->arraySection($rawFsControl, 'rule_attributes'));
+        $this->resolveExtensions($configuration, $this->arraySection($rawFsControl, 'extensions'));
+        $this->resolveParameters($configuration, $this->arraySection($rawFsControl, 'parameters'));
 
         foreach ($configuration->getGroups() as $group) {
             if (! $configuration->hasBindingToGroup($group)) {
@@ -69,29 +74,142 @@ class ConfigurationLoader
     }
 
     /**
-     * @param string[] $paths
+     * Reads a top-level "fs_control" section as an array, defaulting to an empty array.
+     *
+     * @param array<mixed> $rawFsControl
+     *
+     * @return mixed[]
+     *
+     * @throws ConfigurationLoaderException
+     */
+    private function arraySection(array $rawFsControl, string $key): array
+    {
+        $value = $rawFsControl[$key] ?? [];
+        if (! is_array($value)) {
+            throw new ConfigurationLoaderException('The "' . $key . '" section should be an array!');
+        }
+        return $value;
+    }
+
+    /**
+     * @param mixed[] $paths
      * @throws ConfigurationLoaderException
      * @throws DuplicateConfigurationEntryException
      */
     private function resolvePaths(Configuration $configuration, array $paths): void
     {
+        $resolved = [];
         foreach ($paths as $path) {
-            $resolvedPath = realpath($path);
-            if ($resolvedPath === false) {
-                throw new ConfigurationLoaderException('Can\'t resolve the path "' . $path . '"!');
+            if (! is_string($path)) {
+                throw new ConfigurationLoaderException('Each path should be a string!');
             }
-            $configuration->addPath($resolvedPath);
+            foreach ($this->resolvePathPattern($path) as $resolvedPath) {
+                $resolved[$resolvedPath] = true;
+            }
+        }
+
+        // Most-specific path wins: drop a resolved path when a deeper resolved path already
+        // covers it, so a broad "./src/*" can coexist with deeper roots like "./src/Module/*"
+        // without re-scanning the same directories twice.
+        $all = array_keys($resolved);
+        foreach ($all as $candidate) {
+            $coveredByDeeper = false;
+            foreach ($all as $other) {
+                if ($other !== $candidate && str_starts_with($other, $candidate . DIRECTORY_SEPARATOR)) {
+                    $coveredByDeeper = true;
+                    break;
+                }
+            }
+            if (! $coveredByDeeper) {
+                $configuration->addPath($candidate);
+            }
         }
     }
 
     /**
-     * @param string[] $paths
+     * Resolves a single "paths" entry to one or more absolute directories. A literal path
+     * resolves to itself; a path ending with a single "*" expands to its immediate
+     * subdirectories, so sub-contexts can be covered without listing each one.
+     *
+     * @return string[]
+     *
+     * @throws ConfigurationLoaderException
+     */
+    private function resolvePathPattern(string $path): array
+    {
+        if (! str_contains($path, '*')) {
+            $resolvedPath = realpath($path);
+            if ($resolvedPath === false) {
+                throw new ConfigurationLoaderException('Can\'t resolve the path "' . $path . '"!');
+            }
+            return [$resolvedPath];
+        }
+
+        $this->assertTailSingleStarPath($path);
+
+        $resolvedParent = realpath(dirname($path));
+        if ($resolvedParent === false) {
+            throw new ConfigurationLoaderException('Can\'t resolve the path "' . $path . '"!');
+        }
+
+        $entries = scandir($resolvedParent);
+        if ($entries === false) {
+            return [];
+        }
+
+        $resolvedPaths = [];
+        foreach ($entries as $entry) {
+            if (str_starts_with($entry, '.')) {
+                continue;
+            }
+            $childPath = $resolvedParent . DIRECTORY_SEPARATOR . $entry;
+            if (! is_dir($childPath)) {
+                continue;
+            }
+            $resolvedChild = realpath($childPath);
+            if ($resolvedChild === false) {
+                continue;
+            }
+            $resolvedPaths[] = $resolvedChild;
+        }
+        sort($resolvedPaths);
+        return $resolvedPaths;
+    }
+
+    /**
+     * For "paths" only a single "*" as the whole last segment is allowed.
+     *
+     * @throws ConfigurationLoaderException
+     */
+    private function assertTailSingleStarPath(string $path): void
+    {
+        $segments = explode(DIRECTORY_SEPARATOR, $path);
+        $lastIndex = count($segments) - 1;
+        foreach ($segments as $index => $segment) {
+            if ($segment === '*' && $index === $lastIndex) {
+                continue;
+            }
+            if (str_contains($segment, '*')) {
+                throw ConfigurationLoaderException::invalidPathPattern($path);
+            }
+        }
+    }
+
+    /**
+     * @param mixed[] $paths
      * @throws ConfigurationLoaderException
      * @throws DuplicateConfigurationEntryException
      */
     private function resolveExcludePaths(Configuration $configuration, array $paths): void
     {
         foreach ($paths as $path) {
+            if (! is_string($path)) {
+                throw new ConfigurationLoaderException('Each exclude path should be a string!');
+            }
+            if (str_contains($path, '*')) {
+                $configuration->addExcludePathGlob($path);
+                continue;
+            }
             $resolvedPath = realpath($path);
             if ($resolvedPath === false) {
                 throw new ConfigurationLoaderException('Can\'t resolve the path "' . $path . '"!');
@@ -101,13 +219,20 @@ class ConfigurationLoader
     }
 
     /**
-     * @param string[] $paths
+     * @param mixed[] $paths
      * @throws ConfigurationLoaderException
      * @throws DuplicateConfigurationEntryException
      */
     private function resolveExcludeDirs(Configuration $configuration, array $paths): void
     {
         foreach ($paths as $path) {
+            if (! is_string($path)) {
+                throw new ConfigurationLoaderException('Each exclude dir should be a string!');
+            }
+            if (str_contains($path, '*')) {
+                $configuration->addExcludeDirGlob($path);
+                continue;
+            }
             $resolvedPath = realpath($path);
             if ($resolvedPath === false) {
                 throw new ConfigurationLoaderException('Can\'t resolve the exclude dir "' . $path . '"!');
@@ -117,23 +242,31 @@ class ConfigurationLoader
     }
 
     /**
-     * @param string[] $groups
+     * @param mixed[] $groups
      * @throws DuplicateConfigurationEntryException
+     * @throws ConfigurationLoaderException
      */
     private function resolveGroups(Configuration $configuration, array $groups): void
     {
         foreach ($groups as $group => $options) {
+            if (! is_string($group)) {
+                throw new ConfigurationLoaderException('Each group name should be a string!');
+            }
             $configuration->addGroup($group);
         }
     }
 
     /**
-     * @param array<string, string> $bindings
+     * @param mixed[] $bindings
      * @throws DuplicateConfigurationEntryException
+     * @throws ConfigurationLoaderException
      */
     private function resolveBindings(Configuration $configuration, array $bindings): void
     {
         foreach ($bindings as $bindingPath => $group) {
+            if (! is_string($bindingPath) || ! is_string($group)) {
+                throw new ConfigurationLoaderException('Each binding must map a string path to a string group!');
+            }
             if (! str_starts_with($bindingPath, '$')) {
                 trigger_error(
                     'A binding path "' . $bindingPath . '" should start with "$"!',
@@ -152,14 +285,28 @@ class ConfigurationLoader
     }
 
     /**
-     * @param array<string, string[]> $rules
+     * @param mixed[] $rules
      * @throws RuleReferToUnknownGroupException
      * @throws WrongRuleException
+     * @throws ConfigurationLoaderException
      */
     private function resolveRules(Configuration $configuration, array $rules): void
     {
         foreach ($rules as $name => $groups) {
-            $configuration->addRule(new Rule($name, $groups));
+            if (! is_string($name)) {
+                throw new ConfigurationLoaderException('Each rule name should be a string!');
+            }
+            if (! is_array($groups)) {
+                throw new ConfigurationLoaderException('The groups of rule "' . $name . '" should be a list!');
+            }
+            $ruleGroups = [];
+            foreach ($groups as $group) {
+                if (! is_string($group)) {
+                    throw new ConfigurationLoaderException('The groups of rule "' . $name . '" must be strings!');
+                }
+                $ruleGroups[] = $group;
+            }
+            $configuration->addRule(new Rule($name, $ruleGroups));
         }
     }
 
@@ -176,18 +323,24 @@ class ConfigurationLoader
     }
 
     /**
-     * @param array<string, array<string, mixed>> $ruleAttributes
+     * @param mixed[] $ruleAttributes
      *
      * @throws ConfigurationLoaderException
      */
     private function resolveRuleAttributes(Configuration $configuration, array $ruleAttributes): void
     {
         foreach ($ruleAttributes as $ruleName => $attributes) {
+            if (! is_string($ruleName)) {
+                throw new ConfigurationLoaderException('Each rule attribute name should be a string!');
+            }
+            if (! is_array($attributes)) {
+                throw new ConfigurationLoaderException(
+                    'The attributes of rule "' . $ruleName . '" should be a mapping!',
+                );
+            }
             if ($ruleName === '_defaults') {
                 foreach ($attributes as $name => $value) {
-                    if (! is_scalar($value) && ! is_null($value)) {
-                        throw ConfigurationLoaderException::notScalarOrNullAttribute($name, $value);
-                    }
+                    [$name, $value] = $this->assertAttribute($name, $value);
                     $this->tryToValidateBuiltInAttribute($ruleName, $name, $value);
                     $configuration->addDefaultRuleAttribute($name, $value);
                 }
@@ -200,9 +353,7 @@ class ConfigurationLoader
                 );
             }
             foreach ($attributes as $name => $value) {
-                if (! is_scalar($value) && ! is_null($value)) {
-                    throw ConfigurationLoaderException::notScalarOrNullAttribute($name, $value);
-                }
+                [$name, $value] = $this->assertAttribute($name, $value);
                 $this->tryToValidateBuiltInAttribute($ruleName, $name, $value);
                 $rule->addAttribute($name, $value);
             }
@@ -210,23 +361,53 @@ class ConfigurationLoader
     }
 
     /**
-     * @param class-string[] $extensions
+     * Validates a rule-attribute mapping entry (string name, scalar-or-null value).
+     *
+     * @param array-key $name
+     *
+     * @return array{0: string, 1: scalar|null}
+     *
+     * @throws ConfigurationLoaderException
+     */
+    private function assertAttribute(int|string $name, mixed $value): array
+    {
+        if (! is_string($name)) {
+            throw new ConfigurationLoaderException('Each attribute name should be a string!');
+        }
+        if (! is_scalar($value) && ! is_null($value)) {
+            throw ConfigurationLoaderException::notScalarOrNullAttribute($name, $value);
+        }
+        return [$name, $value];
+    }
+
+    /**
+     * @param mixed[] $extensions
+     *
+     * @throws ConfigurationLoaderException
      */
     private function resolveExtensions(Configuration $configuration, array $extensions): void
     {
         foreach ($extensions as $extension) {
+            if (! is_string($extension) || ! class_exists($extension)) {
+                throw new ConfigurationLoaderException(
+                    'Each extension should be an existing class name!',
+                );
+            }
             $configuration->addExtension($extension);
         }
     }
 
     /**
-     * @param array<string, mixed> $parameters
+     * @param mixed[] $parameters
      *
      * @throws ConfigurationLoaderException
      */
     private function resolveParameters(Configuration $configuration, array $parameters): void
     {
         foreach ($parameters as $name => $value) {
+            if (! is_string($name)) {
+                throw new ConfigurationLoaderException('Each parameter name should be a string!');
+            }
             if (! is_scalar($value) && ! is_null($value)) {
                 throw ConfigurationLoaderException::notScalarOrNullParameter($name, $value);
             }

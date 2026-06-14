@@ -17,7 +17,7 @@ This is how it can look like a simple config file:
 ```yaml
 fs_control:
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   groups:
     Application: ~
   bindings:
@@ -47,8 +47,8 @@ To set up multiple paths, place another root directory in the config:
 ```yaml
 fs_control:
   paths:
-    - ./example-fs/Shared
-    - ./example-fs/Book
+    - ./example-fs/Container
+    - ./example-fs/Module
   groups:
     Application: ~
   bindings:
@@ -58,6 +58,108 @@ fs_control:
       - Application
 ```
 
+## Wildcard bindings
+
+A plain binding mounts a layer and expects a rule directory directly under it
+(`Domain/Entity`). Real projects often group rules under a sub-domain folder that has no
+rule of its own (`Domain/Foo/Entity`). Instead of writing one binding per
+sub-domain, you can use a wildcard at the **end** of a binding path:
+
+* `**` — absorbs any number of grouping folders, transparently, up to the first
+  recognized rule.
+* `*` — absorbs exactly one grouping folder.
+
+```yaml
+fs_control:
+  paths:
+    - ./example-fs/Container
+  groups:
+    Domain: ~
+  bindings:
+    $/Domain/**: Domain
+  rules:
+    Entity:
+      - Domain
+```
+
+With `$/Domain/**` the following are all covered by that single line, at any depth and
+with no config change when a new sub-domain folder is added:
+
+```console
+Domain/Entity              -> rule Entity (Domain)
+Domain/Foo/Entity          -> rule Entity (Domain)
+Domain/Foo/Bar/Entity      -> rule Entity (Domain)
+Domain/Foo                 -> transparent mount point (bounded)
+```
+
+`$/Domain/*` behaves the same but for exactly one grouping level — a deeper rule
+(`Domain/Foo/Bar/Entity`) would stay uncovered.
+
+The wildcard absorbs folders only up to the **first folder whose name is a rule**; that
+rule is then validated against the group as usual, and `deny_nested_rules` still applies
+to the leaf. A folder that happens to share a rule's name is treated as that rule.
+
+> [!NOTE]
+> Wildcards are only allowed as the **last** segment of a binding path
+> (`$/Domain/**`, `$/Domain/*`). A wildcard elsewhere (e.g. `$/*/Domain/**`) is rejected.
+
+### Binding precedence
+
+When several bindings match a path, the one with the **longest concrete mount** wins, so
+declaration order does not matter. A specific literal binding always overrides a wildcard:
+
+```yaml
+bindings:
+  $/Domain/**: Domain      # everything under Domain is transparently grouped...
+  $/Domain/CQRS: CQRS      # ...except Domain/CQRS/* which is bound to the CQRS group
+```
+
+### Sub-contexts (namespace before the layer)
+
+Wildcards absorb folders that sit **after** a layer. If a context places a sub-context
+namespace **before** the layer (`Container/SubContextA/Application/...`), point `paths` at
+each sub-context root so the layer is again the first segment, and reuse the same
+bindings.
+
+A `paths` entry may end with a single `*`, which expands to the **immediate
+subdirectories** of that folder — so you do not have to list every sub-context by hand,
+and a newly added sub-context is picked up automatically:
+
+```yaml
+fs_control:
+  paths:
+    - ./example-fs/Container/*
+  groups:
+    Application: ~
+    Domain: ~
+  bindings:
+    $/Application/**: Application
+    $/Domain/**: Domain
+  rules:
+    Service:
+      - Application
+```
+
+This is equivalent to listing `./example-fs/Container/SubContextA`,
+`./example-fs/Container/SubContextB`, ... explicitly. Only a single `*` as the **whole
+last segment** is supported for `paths` (`**` and partial wildcards like `Foo*` are
+rejected); files and dot-directories are ignored by the expansion.
+
+A broad `*` and a deeper root can coexist — the most specific path wins. When an expansion
+yields a directory that a deeper `paths` entry already covers, the broad one is dropped, so the
+same directory is never scanned twice:
+
+```yaml
+fs_control:
+  paths:
+    - ./example-fs/Container/*          # every immediate sub-context...
+    - ./example-fs/Container/Module/*   # ...but scan Module one level deeper
+```
+
+Here `Container/*` would expand to include `Module`; because the deeper `Container/Module/*`
+covers it, the broad `Module` root is dropped (no double-scan), while new siblings under
+`Container` are still picked up automatically by `Container/*`.
+
 ## Excluding paths
 
 To exclude some paths from analysis, place a few of them in the config:
@@ -65,9 +167,9 @@ To exclude some paths from analysis, place a few of them in the config:
 ```yaml
 fs_control:
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   exclude_paths:
-    - ./example-fs/Shared/Infrastructure/ParamConverter/Check
+    - ./example-fs/Container/Infrastructure/ParamConverter/Check
   groups:
     Application: ~
   bindings:
@@ -87,9 +189,9 @@ To exclude a directory and everything inside it from analysis, use `exclude_dirs
 ```yaml
 fs_control:
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   exclude_dirs:
-    - ./example-fs/Shared/Infrastructure/Legacy
+    - ./example-fs/Container/Infrastructure/Legacy
   groups:
     Application: ~
   bindings:
@@ -102,6 +204,25 @@ fs_control:
 Unlike `exclude_paths` which matches a single path exactly, `exclude_dirs` excludes the given directory
 and all paths nested under it.
 
+### Glob excludes
+
+Both `exclude_paths` and `exclude_dirs` accept a glob (any entry containing `*`), matched against the
+path **relative to the scan root** it lives under. `**` matches any number of directories (including
+none), so a single line can exclude a directory wherever it appears:
+
+```yaml
+fs_control:
+  paths:
+    - ./example-fs/Container
+  exclude_dirs:
+    - '**/Doc'      # every "Doc" directory (and its subtree), at any depth
+    - '**/Config'
+```
+
+The literal/glob distinction is preserved: an `exclude_paths` glob matches the exact directory only,
+while an `exclude_dirs` glob also excludes everything nested under a matched directory. Glob entries are
+not resolved on disk, so they need not exist when the config is loaded.
+
 ## Parameters
 
 Parameters can be used by built-in `fs-control` functions or its extensions in the section `parameters`.
@@ -109,7 +230,7 @@ Parameters can be used by built-in `fs-control` functions or its extensions in t
 ```yaml
 fs_control:
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   parameters:
     deny_nested_rules: true
   groups:
@@ -138,7 +259,7 @@ An attribute can be set up for specific rule, for example, in the config:
 ```yaml
 fs_control:
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   parameters:
     deny_nested_rules: true
   groups:
@@ -158,7 +279,7 @@ Or if you want to assign the attributes for all rules, you can set it up under `
 ```yaml
 fs_control:
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   parameters:
     deny_nested_rules: true
   groups:
@@ -192,7 +313,7 @@ fs_control:
     configs:
       - /path/to/your/symfony_config
   paths:
-    - ./example-fs/Shared
+    - ./example-fs/Container
   groups:
     Application: ~
   bindings:

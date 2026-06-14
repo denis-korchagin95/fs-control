@@ -17,6 +17,9 @@ use FsControl\Exception\DuplicateConfigurationEntryException;
 use FsControl\Exception\RuleReferToUnknownGroupException;
 use Webmozart\Glob\Glob;
 
+use function array_pop;
+use function explode;
+use function implode;
 use function in_array;
 use function str_starts_with;
 use function strlen;
@@ -143,7 +146,9 @@ class Configuration
 
     /**
      * Matches a scanned path against exclude globs, anchored to the scan root it lives under.
-     * When $includeSubtree is true a glob also matches everything nested under a matching dir.
+     * When $includeSubtree is true a glob also matches everything nested (at any depth) under a
+     * matching directory — checked by walking the path's ancestors, since a trailing "**" only
+     * matches a single segment in webmozart/glob.
      *
      * @param string[] $globs
      */
@@ -153,11 +158,30 @@ class Configuration
         if ($relativePath === null) {
             return false;
         }
-        foreach ($globs as $glob) {
-            if (Glob::match('/' . $relativePath, '/' . $glob)) {
+        if ($this->relativePathMatchesGlob($relativePath, $globs)) {
+            return true;
+        }
+        if (! $includeSubtree) {
+            return false;
+        }
+        $segments = explode(DIRECTORY_SEPARATOR, $relativePath);
+        array_pop($segments);
+        while ($segments !== []) {
+            if ($this->relativePathMatchesGlob(implode(DIRECTORY_SEPARATOR, $segments), $globs)) {
                 return true;
             }
-            if ($includeSubtree && Glob::match('/' . $relativePath, '/' . $glob . '/**')) {
+            array_pop($segments);
+        }
+        return false;
+    }
+
+    /**
+     * @param string[] $globs
+     */
+    private function relativePathMatchesGlob(string $relativePath, array $globs): bool
+    {
+        foreach ($globs as $glob) {
+            if (Glob::match('/' . $relativePath, '/' . $glob)) {
                 return true;
             }
         }

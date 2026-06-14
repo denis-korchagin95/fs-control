@@ -30,10 +30,11 @@ class ConfigurationExcludeGlobTest extends TestCase
         $configuration->addPath('/root');
         $configuration->addExcludeDirGlob('**/Doc');
 
-        self::assertTrue($configuration->isPathExcludedByDir('/root/Doc'));            // zero-segment
-        self::assertTrue($configuration->isPathExcludedByDir('/root/Foo/Bar/Doc'));    // any depth
-        self::assertTrue($configuration->isPathExcludedByDir('/root/Foo/Doc/sub'));    // subtree
-        self::assertFalse($configuration->isPathExcludedByDir('/root/Foo/DocX'));      // no partial
+        self::assertTrue($configuration->isPathExcludedByDir('/root/Doc'));              // zero-segment
+        self::assertTrue($configuration->isPathExcludedByDir('/root/Foo/Bar/Doc'));      // any depth
+        self::assertTrue($configuration->isPathExcludedByDir('/root/Foo/Doc/sub'));      // subtree
+        self::assertTrue($configuration->isPathExcludedByDir('/root/Foo/Doc/a/b/c/d'));  // deep subtree
+        self::assertFalse($configuration->isPathExcludedByDir('/root/Foo/DocX'));        // no partial
         self::assertFalse($configuration->isPathExcludedByDir('/root/Foo/Other'));
     }
 

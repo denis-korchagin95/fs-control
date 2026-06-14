@@ -67,6 +67,7 @@ $configFile = null;
 $showUncoveredPaths = false;
 $showUnboundedPaths = false;
 $showExcludedPaths = false;
+$showExcludedDirs = false;
 $showAllowedPaths = false;
 $showBoundedPaths = false;
 $failOnUncoveredPaths = false;
@@ -101,6 +102,10 @@ foreach ($argv as $index => $argument) {
     }
     if ($argument === '--show-excluded-paths') {
         $showExcludedPaths = true;
+        continue;
+    }
+    if ($argument === '--show-excluded-dirs') {
+        $showExcludedDirs = true;
         continue;
     }
     if ($argument === '--show-allowed-paths') {
@@ -160,6 +165,7 @@ Options:
         --show-uncovered-paths     Show uncovered paths (out of rules)
         --show-unbounded-paths     Show unbounded paths (not configured for tool in binding section)
         --show-excluded-paths      Show excluded paths
+        --show-excluded-dirs       Show excluded dirs
         --show-allowed-paths       Show allowed paths
         --show-bounded-paths       Show bounded paths
         --fail-on-uncovered-paths  Treat uncovered paths as failures
@@ -302,6 +308,20 @@ if (
 }
 
 if (
+    $showExcludedDirs
+    && $result->hasExcludedDirs()
+) {
+    fwrite(STDOUT, 'Excluded Dirs:' . PHP_EOL);
+    foreach ($result->getExcludedDirs() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['description'] . PHP_EOL . PHP_EOL);
+        }
+    }
+    fwrite(STDOUT, PHP_EOL);
+}
+
+if (
     $showBoundedPaths
     && $result->hasBoundedPaths()
 ) {
@@ -346,6 +366,7 @@ fwrite(STDOUT, 'Violation Paths: ' . $result->getViolationPathCount() . PHP_EOL)
 fwrite(STDOUT, 'Uncovered Paths: ' . $result->getUncoveredPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Unbounded Paths: ' . $result->getUnboundedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Excluded Paths: ' . $result->getExcludedPathCount() . PHP_EOL);
+fwrite(STDOUT, 'Excluded Dirs: ' . $result->getExcludedDirCount() . PHP_EOL);
 fwrite(STDOUT, 'Bounded Paths: ' . $result->getBoundedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Allowed Paths: ' . $result->getAllowedPathCount() . PHP_EOL);
 if ($filteredResult !== null) {

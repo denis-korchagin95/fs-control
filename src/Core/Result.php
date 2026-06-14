@@ -45,6 +45,11 @@ class Result
      */
     private array $excludedPaths = [];
 
+    /**
+     * @var array{path: string, description: string}[]
+     */
+    private array $excludedDirs = [];
+
     public function addAllowedPath(string $path, string $description): void
     {
         $this->allowedPaths[] = ['path' => $path, 'description' => $description];
@@ -73,6 +78,11 @@ class Result
     public function addExcludedPath(string $path, string $description): void
     {
         $this->excludedPaths[] = ['path' => $path, 'description' => $description];
+    }
+
+    public function addExcludedDir(string $path, string $description): void
+    {
+        $this->excludedDirs[] = ['path' => $path, 'description' => $description];
     }
 
     /**
@@ -123,6 +133,14 @@ class Result
         return $this->excludedPaths;
     }
 
+    /**
+     * @return array{path: string, description: string}[]
+     */
+    public function getExcludedDirs(): array
+    {
+        return $this->excludedDirs;
+    }
+
     public function getViolationPathCount(): int
     {
         return count($this->violationPaths);
@@ -153,6 +171,11 @@ class Result
         return count($this->excludedPaths);
     }
 
+    public function getExcludedDirCount(): int
+    {
+        return count($this->excludedDirs);
+    }
+
     public function hasViolationPaths(): bool
     {
         return $this->violationPaths !== [];
@@ -171,6 +194,11 @@ class Result
     public function hasExcludedPaths(): bool
     {
         return $this->excludedPaths !== [];
+    }
+
+    public function hasExcludedDirs(): bool
+    {
+        return $this->excludedDirs !== [];
     }
 
     public function hasAllowedPaths(): bool

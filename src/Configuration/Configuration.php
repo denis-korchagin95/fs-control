@@ -127,6 +127,21 @@ class Configuration
     }
 
     /**
+     * Whether the path is a directory directly listed in exclude_dirs (literal) or directly
+     * matched by an exclude_dirs glob — i.e. a configured exclude root, not merely a descendant
+     * swept up under one. Used to report only the introduced/expanded exclude dirs.
+     */
+    public function isExcludeDirRoot(string $path): bool
+    {
+        foreach ($this->excludeDirs as $dir) {
+            if ($path === $dir) {
+                return true;
+            }
+        }
+        return $this->matchesGlob($path, $this->excludeDirGlobs, false);
+    }
+
+    /**
      * Matches a scanned path against exclude globs, anchored to the scan root it lives under.
      * When $includeSubtree is true a glob also matches everything nested under a matching dir.
      *

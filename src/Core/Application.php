@@ -116,11 +116,15 @@ class Application
                 continue;
             }
             if ($this->configuration->isPathExcludedByDir($directoryPath)) {
-                $result->addExcludedPath(
-                    $directoryPath,
-                    'The path was excluded from analysis by the dir in the config "'
-                    . $this->configuration->getConfigName() . '"',
-                );
+                // report only the configured/expanded exclude-dir roots, not every descendant
+                // swept up under them (descendants are still skipped from analysis).
+                if ($this->configuration->isExcludeDirRoot($directoryPath)) {
+                    $result->addExcludedDir(
+                        $directoryPath,
+                        'The path was excluded from analysis by the dir in the config "'
+                        . $this->configuration->getConfigName() . '"',
+                    );
+                }
                 continue;
             }
             $pathHandleContext = $this->preparePathHandleContext($path, $directoryPath);

@@ -77,4 +77,26 @@ class ConfigurationExcludeGlobTest extends TestCase
 
         self::assertFalse($configuration->isPathExcludedByDir('/other/Doc'));
     }
+
+    /**
+     * @test
+     */
+    public function itShouldTreatOnlyConfiguredOrExpandedDirsAsExcludeRoots(): void
+    {
+        $configuration = new Configuration('test-config', []);
+        $configuration->addPath('/root');
+        $configuration->addExcludeDir('/root/Foo/Legacy');
+        $configuration->addExcludeDirGlob('**/Doc');
+
+        // a literal entry and each glob-matched dir are roots
+        self::assertTrue($configuration->isExcludeDirRoot('/root/Foo/Legacy'));
+        self::assertTrue($configuration->isExcludeDirRoot('/root/Foo/Doc'));
+        self::assertTrue($configuration->isExcludeDirRoot('/root/Bar/Doc'));
+
+        // descendants are excluded from analysis but are NOT roots
+        self::assertFalse($configuration->isExcludeDirRoot('/root/Foo/Legacy/Old'));
+        self::assertFalse($configuration->isExcludeDirRoot('/root/Foo/Doc/sub'));
+        self::assertTrue($configuration->isPathExcludedByDir('/root/Foo/Legacy/Old'));
+        self::assertTrue($configuration->isPathExcludedByDir('/root/Foo/Doc/sub'));
+    }
 }

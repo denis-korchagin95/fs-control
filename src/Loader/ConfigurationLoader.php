@@ -98,12 +98,30 @@ class ConfigurationLoader
      */
     private function resolvePaths(Configuration $configuration, array $paths): void
     {
+        $resolved = [];
         foreach ($paths as $path) {
             if (! is_string($path)) {
                 throw new ConfigurationLoaderException('Each path should be a string!');
             }
             foreach ($this->resolvePathPattern($path) as $resolvedPath) {
-                $configuration->addPath($resolvedPath);
+                $resolved[$resolvedPath] = true;
+            }
+        }
+
+        // Most-specific path wins: drop a resolved path when a deeper resolved path already
+        // covers it, so a broad "./src/*" can coexist with deeper roots like "./src/Module/*"
+        // without re-scanning the same directories twice.
+        $all = array_keys($resolved);
+        foreach ($all as $candidate) {
+            $coveredByDeeper = false;
+            foreach ($all as $other) {
+                if ($other !== $candidate && str_starts_with($other, $candidate . DIRECTORY_SEPARATOR)) {
+                    $coveredByDeeper = true;
+                    break;
+                }
+            }
+            if (! $coveredByDeeper) {
+                $configuration->addPath($candidate);
             }
         }
     }
@@ -188,6 +206,10 @@ class ConfigurationLoader
             if (! is_string($path)) {
                 throw new ConfigurationLoaderException('Each exclude path should be a string!');
             }
+            if (str_contains($path, '*')) {
+                $configuration->addExcludePathGlob($path);
+                continue;
+            }
             $resolvedPath = realpath($path);
             if ($resolvedPath === false) {
                 throw new ConfigurationLoaderException('Can\'t resolve the path "' . $path . '"!');
@@ -206,6 +228,10 @@ class ConfigurationLoader
         foreach ($paths as $path) {
             if (! is_string($path)) {
                 throw new ConfigurationLoaderException('Each exclude dir should be a string!');
+            }
+            if (str_contains($path, '*')) {
+                $configuration->addExcludeDirGlob($path);
+                continue;
             }
             $resolvedPath = realpath($path);
             if ($resolvedPath === false) {

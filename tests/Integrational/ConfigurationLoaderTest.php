@@ -21,6 +21,7 @@ use function is_dir;
 use function mkdir;
 use function rmdir;
 use function scandir;
+use function sort;
 use function sys_get_temp_dir;
 use function uniqid;
 use function unlink;
@@ -84,6 +85,39 @@ class ConfigurationLoaderTest extends TestCase
         );
 
         self::assertSame([$this->baseDir . '/ctx/Alpha'], $configuration->getPaths());
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldDropBroadPathsCoveredByADeeperRoot(): void
+    {
+        mkdir($this->baseDir . '/ctx/Foo', 0777, true);
+        mkdir($this->baseDir . '/ctx/Bar', 0777, true);
+        mkdir($this->baseDir . '/ctx/Module/Sub', 0777, true);
+        mkdir($this->baseDir . '/ctx/Module/Other', 0777, true);
+
+        $configuration = (new ConfigurationLoader())->loadFromFile(
+            $this->writeConfig(
+                "fs_control:\n  paths:\n    - " . $this->baseDir . "/ctx/*\n"
+                . '    - ' . $this->baseDir . "/ctx/Module/*\n",
+            ),
+        );
+
+        // "ctx/*" expands to Foo, Bar, Module; "ctx/Module/*" expands to Sub, Other.
+        // The broad "Module" is dropped (covered by the deeper Module/* roots), so it is
+        // not scanned twice; new siblings under ctx are still auto-picked-up by "ctx/*".
+        $paths = $configuration->getPaths();
+        sort($paths);
+        self::assertSame(
+            [
+                $this->baseDir . '/ctx/Bar',
+                $this->baseDir . '/ctx/Foo',
+                $this->baseDir . '/ctx/Module/Other',
+                $this->baseDir . '/ctx/Module/Sub',
+            ],
+            $paths,
+        );
     }
 
     /**

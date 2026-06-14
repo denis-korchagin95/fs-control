@@ -56,7 +56,10 @@ class SymfonyExtensionTest extends TestCase
             $this->baseDir . '/config/services.yaml',
             "services:\n  'App\\\\':\n    resource: '../src'\n    exclude:\n      - '../src/Domain/Entity'\n",
         );
-        file_put_contents($this->baseDir . '/config.yaml', $this->fsControlConfig());
+        file_put_contents(
+            $this->baseDir . '/config.yaml',
+            $this->fsControlConfig($this->baseDir . '/config/services.yaml'),
+        );
     }
 
     protected function tearDown(): void
@@ -123,6 +126,45 @@ class SymfonyExtensionTest extends TestCase
         );
     }
 
+    /**
+     * @test
+     */
+    public function itShouldExpandGlobConfigsToMatchingFiles(): void
+    {
+        // a "*" configs entry is expanded as a glob, so the single services.yaml is still found
+        file_put_contents(
+            $this->baseDir . '/config.yaml',
+            $this->fsControlConfig($this->baseDir . '/config/*.yaml'),
+        );
+
+        $application = $this->buildApplication(null);
+        $application->run();
+
+        self::assertSame(
+            [self::NOT_EXCLUDED_CATEGORY => ['src/Domain/View']],
+            $application->collectExtensionBaselineFindings(),
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldSkipGlobConfigsThatMatchNothing(): void
+    {
+        file_put_contents(
+            $this->baseDir . '/config.yaml',
+            $this->fsControlConfig($this->baseDir . '/config/missing/*.yaml'),
+        );
+
+        $application = $this->buildApplication(null);
+        $application->run();
+
+        [$succeeded] = $this->terminate($application);
+
+        self::assertTrue($succeeded);
+        self::assertSame([], $application->collectExtensionBaselineFindings());
+    }
+
     private function buildApplication(?Baseline $baseline): Application
     {
         $configuration = (new ConfigurationLoader())->loadFromFile($this->baseDir . '/config.yaml');
@@ -166,7 +208,7 @@ class SymfonyExtensionTest extends TestCase
         return str_replace($this->baseDir . DIRECTORY_SEPARATOR, '', $output);
     }
 
-    private function fsControlConfig(): string
+    private function fsControlConfig(string $configsEntry): string
     {
         return <<<YAML
         fs_control:
@@ -174,7 +216,7 @@ class SymfonyExtensionTest extends TestCase
             - FsControl\\BuiltInExtension\\SymfonyExcludeServiceChecker\\Extension
           symfony_exclude_service_checker:
             configs:
-              - {$this->baseDir}/config/services.yaml
+              - {$configsEntry}
           paths:
             - {$this->baseDir}/src
           groups:

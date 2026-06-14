@@ -15,6 +15,12 @@ namespace FsControl\Configuration;
 
 use FsControl\Exception\DuplicateConfigurationEntryException;
 use FsControl\Exception\RuleReferToUnknownGroupException;
+use Webmozart\Glob\Glob;
+
+use function in_array;
+use function str_starts_with;
+use function strlen;
+use function substr;
 
 class Configuration
 {
@@ -32,6 +38,16 @@ class Configuration
      * @var string[]
      */
     private array $excludeDirs = [];
+
+    /**
+     * @var string[]
+     */
+    private array $excludePathGlobs = [];
+
+    /**
+     * @var string[]
+     */
+    private array $excludeDirGlobs = [];
 
     /**
      * @var string[]
@@ -94,7 +110,10 @@ class Configuration
 
     public function isPathExcluded(string $path): bool
     {
-        return in_array($path, $this->excludePaths, true);
+        if (in_array($path, $this->excludePaths, true)) {
+            return true;
+        }
+        return $this->matchesGlob($path, $this->excludePathGlobs, false);
     }
 
     public function isPathExcludedByDir(string $path): bool
@@ -104,7 +123,48 @@ class Configuration
                 return true;
             }
         }
+        return $this->matchesGlob($path, $this->excludeDirGlobs, true);
+    }
+
+    /**
+     * Matches a scanned path against exclude globs, anchored to the scan root it lives under.
+     * When $includeSubtree is true a glob also matches everything nested under a matching dir.
+     *
+     * @param string[] $globs
+     */
+    private function matchesGlob(string $path, array $globs, bool $includeSubtree): bool
+    {
+        $relativePath = $this->toScanRelative($path);
+        if ($relativePath === null) {
+            return false;
+        }
+        foreach ($globs as $glob) {
+            if (Glob::match('/' . $relativePath, '/' . $glob)) {
+                return true;
+            }
+            if ($includeSubtree && Glob::match('/' . $relativePath, '/' . $glob . '/**')) {
+                return true;
+            }
+        }
         return false;
+    }
+
+    /**
+     * Returns the given path relative to the scan root ("paths" entry) that contains it,
+     * or null when it lives under none of them.
+     */
+    private function toScanRelative(string $path): ?string
+    {
+        foreach ($this->paths as $root) {
+            if ($path === $root) {
+                return '';
+            }
+            $prefix = $root . DIRECTORY_SEPARATOR;
+            if (str_starts_with($path, $prefix)) {
+                return substr($path, strlen($prefix));
+            }
+        }
+        return null;
     }
 
     public function getBindingForPath(string $path): ?BindingMatch
@@ -183,6 +243,28 @@ class Configuration
     /**
      * @throws DuplicateConfigurationEntryException
      */
+    public function addExcludePathGlob(string $glob): void
+    {
+        if (in_array($glob, $this->excludePathGlobs, true)) {
+            throw new DuplicateConfigurationEntryException('The duplicated exclude path glob "' . $glob . '"!');
+        }
+        $this->excludePathGlobs[] = $glob;
+    }
+
+    /**
+     * @throws DuplicateConfigurationEntryException
+     */
+    public function addExcludeDirGlob(string $glob): void
+    {
+        if (in_array($glob, $this->excludeDirGlobs, true)) {
+            throw new DuplicateConfigurationEntryException('The duplicated exclude dir glob "' . $glob . '"!');
+        }
+        $this->excludeDirGlobs[] = $glob;
+    }
+
+    /**
+     * @throws DuplicateConfigurationEntryException
+     */
     public function addGroup(string $group): void
     {
         if (in_array($group, $this->groups, true)) {
@@ -255,6 +337,22 @@ class Configuration
     public function getExcludeDirs(): array
     {
         return array_values($this->excludeDirs);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getExcludePathGlobs(): array
+    {
+        return array_values($this->excludePathGlobs);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getExcludeDirGlobs(): array
+    {
+        return array_values($this->excludeDirGlobs);
     }
 
     /**

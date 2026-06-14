@@ -145,6 +145,21 @@ This is equivalent to listing `./example-fs/Container/SubContextA`,
 last segment** is supported for `paths` (`**` and partial wildcards like `Foo*` are
 rejected); files and dot-directories are ignored by the expansion.
 
+A broad `*` and a deeper root can coexist — the most specific path wins. When an expansion
+yields a directory that a deeper `paths` entry already covers, the broad one is dropped, so the
+same directory is never scanned twice:
+
+```yaml
+fs_control:
+  paths:
+    - ./example-fs/Container/*          # every immediate sub-context...
+    - ./example-fs/Container/Module/*   # ...but scan Module one level deeper
+```
+
+Here `Container/*` would expand to include `Module`; because the deeper `Container/Module/*`
+covers it, the broad `Module` root is dropped (no double-scan), while new siblings under
+`Container` are still picked up automatically by `Container/*`.
+
 ## Excluding paths
 
 To exclude some paths from analysis, place a few of them in the config:
@@ -188,6 +203,25 @@ fs_control:
 
 Unlike `exclude_paths` which matches a single path exactly, `exclude_dirs` excludes the given directory
 and all paths nested under it.
+
+### Glob excludes
+
+Both `exclude_paths` and `exclude_dirs` accept a glob (any entry containing `*`), matched against the
+path **relative to the scan root** it lives under. `**` matches any number of directories (including
+none), so a single line can exclude a directory wherever it appears:
+
+```yaml
+fs_control:
+  paths:
+    - ./example-fs/Container
+  exclude_dirs:
+    - '**/Doc'      # every "Doc" directory (and its subtree), at any depth
+    - '**/Config'
+```
+
+The literal/glob distinction is preserved: an `exclude_paths` glob matches the exact directory only,
+while an `exclude_dirs` glob also excludes everything nested under a matched directory. Glob entries are
+not resolved on disk, so they need not exist when the config is loaded.
 
 ## Parameters
 

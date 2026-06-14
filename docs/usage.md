@@ -213,6 +213,9 @@ fs_control:
 Every path inside `./example-fs/Container/Domain/Legacy` will appear in `Excluded Paths`
 without having to list each one individually.
 
+Both `exclude_paths` and `exclude_dirs` also accept globs (e.g. `'**/Doc'` to exclude every `Doc`
+directory at any depth) — see the [config reference](./config_reference.md#glob-excludes).
+
 Congratulations, now you know that how to solve the most important errors using `fs-control`.
 
 ## Unbounded paths

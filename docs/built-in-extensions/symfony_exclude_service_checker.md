@@ -22,6 +22,18 @@ fs_control:
   # rest of the config ...
 ```
 
+A `configs` entry may be a glob (any entry containing `*`), so one `services.yaml` per context
+need not be listed by hand — `**` matches any number of directories:
+
+```yaml
+fs_control:
+  symfony_exclude_service_checker:
+    configs:
+      - config/*/services.yaml
+```
+
+A glob that matches no files is skipped; a literal entry that cannot be resolved is still an error.
+
 For this setting, it will be checked only the broken paths.
 If you check the not excluded paths, you need to mark non-service rules in the rule attributes section.
 

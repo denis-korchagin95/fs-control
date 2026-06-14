@@ -19,6 +19,9 @@ use FsControl\Exception\ExtensionException;
 use FsControl\Extension\BaselineAwareExtension;
 use FsControl\Extension\ExtensionInterface;
 use Symfony\Component\Yaml\Yaml;
+use Webmozart\Glob\Glob;
+
+use function str_starts_with;
 
 class Extension implements ExtensionInterface, BaselineAwareExtension
 {
@@ -53,87 +56,117 @@ class Extension implements ExtensionInterface, BaselineAwareExtension
         $config = new Config();
         $application->setExtensionInfo(self::EXTENSION_INFO_KEY_CONFIG, $config);
         foreach ($rawConfiguration['fs_control'][self::CONFIG_KEY]['configs'] ?? [] as $rawConfigPath) {
-            $configPath = realpath($rawConfigPath);
-            if ($configPath === false) {
-                throw new ExtensionException(
-                    self::class,
-                    'Cannot resolve a symfony config path "' . $rawConfigPath . '"!',
-                );
+            foreach ($this->resolveConfigPaths($rawConfigPath, $cwd) as $configPath) {
+                $this->processConfig($config, $configPath, $cwd);
             }
-            $configDir = dirname($configPath);
-            $result = chdir($configDir);
-            if ($result === false) {
-                throw new ExtensionException(
-                    self::class,
-                    'Cannot change current working directory to "' . $configDir . '!"',
-                );
+        }
+    }
+
+    /**
+     * Resolves a single "configs" entry to one or more Symfony config files. A "*" entry is
+     * expanded as a glob (so one services.yaml per context need not be listed by hand); a
+     * literal entry is resolved as before and must exist.
+     *
+     * @return string[]
+     *
+     * @throws ExtensionException
+     */
+    private function resolveConfigPaths(string $rawConfigPath, string $cwd): array
+    {
+        if (str_contains($rawConfigPath, '*')) {
+            $glob = str_starts_with($rawConfigPath, DIRECTORY_SEPARATOR)
+                ? $rawConfigPath
+                : $cwd . DIRECTORY_SEPARATOR . $rawConfigPath;
+            return Glob::glob($glob);
+        }
+        $configPath = realpath($rawConfigPath);
+        if ($configPath === false) {
+            throw new ExtensionException(
+                self::class,
+                'Cannot resolve a symfony config path "' . $rawConfigPath . '"!',
+            );
+        }
+        return [$configPath];
+    }
+
+    /**
+     * @throws ExtensionException
+     */
+    private function processConfig(Config $config, string $configPath, string $cwd): void
+    {
+        $configDir = dirname($configPath);
+        $result = chdir($configDir);
+        if ($result === false) {
+            throw new ExtensionException(
+                self::class,
+                'Cannot change current working directory to "' . $configDir . '!"',
+            );
+        }
+        /** @var array{
+         *     services?: array<string, array{
+         *         resource?: string,
+         *         exclude?: string[],
+         *     }>
+         * } $yamlConfig
+         */
+        $yamlConfig = Yaml::parseFile($configPath, Yaml::PARSE_CUSTOM_TAGS);
+        foreach ($yamlConfig['services'] ?? [] as $serviceName => $serviceConfig) {
+            $resource = $serviceConfig['resource'] ?? null;
+            if ($resource === null) {
+                continue;
             }
-            /** @var array{
-             *     services?: array<string, array{
-             *         resource?: string,
-             *         exclude?: string[],
-             *     }>
-             * } $yamlConfig
-             */
-            $yamlConfig = Yaml::parseFile($configPath, Yaml::PARSE_CUSTOM_TAGS);
-            foreach ($yamlConfig['services'] ?? [] as $serviceName => $serviceConfig) {
-                $resource = $serviceConfig['resource'] ?? null;
-                if ($resource === null) {
-                    continue;
-                }
-                $resourcePath = realpath($resource);
-                if ($resourcePath === false) {
-                    // Unresolvable resource (a glob like ".../Controller/*", a %kernel.project_dir%/...
-                    // parameter, or a path that no longer exists). It can never equal a scanned root,
-                    // so it cannot participate in the exclude check — skip it instead of aborting.
-                    continue;
-                }
-                $excludePaths = [];
-                $brokePaths = [];
-                foreach ($serviceConfig['exclude'] ?? [] as $excludePathPattern) {
-                    if (str_contains($excludePathPattern, '*')) {
-                        $regexp = '/^((?:..\/)+)/';
-                        if (preg_match($regexp, $excludePathPattern, $matches) === 1) {
-                            $tempDir = realpath($configDir . '/' . $matches[0]);
-                            if ($tempDir === false) {
-                                throw new ExtensionException(
-                                    self::class,
-                                    'Cannot resolve an exclude path "' . $excludePathPattern . '"!',
-                                );
-                            }
-                            $excludePathWithGlob = $tempDir . str_replace($matches[0], '/', $excludePathPattern);
-                            $excludePaths[] = $excludePathWithGlob;
-                            continue;
+            $resourcePath = realpath($resource);
+            if ($resourcePath === false) {
+                // Unresolvable resource (a glob like ".../Controller/*", a %kernel.project_dir%/...
+                // parameter, or a path that no longer exists). It can never equal a scanned root,
+                // so it cannot participate in the exclude check — skip it instead of aborting.
+                continue;
+            }
+            $excludePaths = [];
+            $brokePaths = [];
+            foreach ($serviceConfig['exclude'] ?? [] as $excludePathPattern) {
+                if (str_contains($excludePathPattern, '*')) {
+                    $regexp = '/^((?:..\/)+)/';
+                    if (preg_match($regexp, $excludePathPattern, $matches) === 1) {
+                        $tempDir = realpath($configDir . '/' . $matches[0]);
+                        if ($tempDir === false) {
+                            throw new ExtensionException(
+                                self::class,
+                                'Cannot resolve an exclude path "' . $excludePathPattern . '"!',
+                            );
                         }
-                        $excludePaths[] = $excludePathPattern;
+                        $excludePathWithGlob = $tempDir . str_replace($matches[0], '/', $excludePathPattern);
+                        $excludePaths[] = $excludePathWithGlob;
                         continue;
                     }
-                    $excludePath = realpath($excludePathPattern);
-                    if ($excludePath === false) {
-                        $brokePaths[] = $excludePathPattern;
-                        continue;
-                    }
-                    $excludePaths[] = $excludePath;
-                }
-                if (count($excludePaths) === 0 && count($brokePaths) === 0) {
+                    $excludePaths[] = $excludePathPattern;
                     continue;
                 }
-                $excludePackage = new ExcludePackage(
-                    $serviceName,
-                    $configPath,
-                    $resourcePath,
-                    $excludePaths,
-                    $brokePaths,
-                );
-                $config->addExcludePackage($excludePackage);
+                $excludePath = realpath($excludePathPattern);
+                if ($excludePath === false) {
+                    $brokePaths[] = $excludePathPattern;
+                    continue;
+                }
+                $excludePaths[] = $excludePath;
             }
-            $result = chdir($cwd);
-            if ($result === false) {
-                throw new ExtensionException(
-                    self::class,
-                    'Cannot change current working directory to "' . $cwd . '!"',
-                );
+            if (count($excludePaths) === 0 && count($brokePaths) === 0) {
+                continue;
             }
+            $excludePackage = new ExcludePackage(
+                $serviceName,
+                $configPath,
+                $resourcePath,
+                $excludePaths,
+                $brokePaths,
+            );
+            $config->addExcludePackage($excludePackage);
+        }
+        $result = chdir($cwd);
+        if ($result === false) {
+            throw new ExtensionException(
+                self::class,
+                'Cannot change current working directory to "' . $cwd . '!"',
+            );
         }
     }
 

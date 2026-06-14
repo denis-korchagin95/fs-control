@@ -396,6 +396,58 @@ you can use the `--explain` flag, and `fs-control` will try to add explanations 
 ./vendor/bin/fs-control example-fs-config.yaml --fail-on-uncovered-paths --fail-on-unbounded-paths --explain
 ```
 
+## Baseline
+
+When you adopt `fs-control` on an existing codebase, you usually start with a lot of
+findings you cannot fix all at once. Unlike `exclude_paths` / `exclude_dirs` — which
+remove a path from analysis entirely (so a *new* violation under an excluded path
+becomes invisible) — a baseline keeps every path under analysis but suppresses the
+findings that already existed when the baseline was taken. New findings still fail
+the build, so the known debt can only shrink.
+
+Generate a baseline from the current findings:
+
+```console
+./vendor/bin/fs-control test-config.yaml \
+    --fail-on-uncovered-paths --fail-on-unbounded-paths \
+    --generate-baseline=baseline.yaml
+```
+
+This writes a file with project-relative paths, grouped by category and sorted for
+minimal diffs:
+
+```yaml
+violations:
+    - example-fs/Shared/Domain/ParamConverter
+uncovered:
+    - example-fs/Shared/Application/Command
+```
+
+Then wire the baseline into your CI run. Findings listed in the baseline are moved to
+a `Baselined Paths` count and do not affect the exit code; anything new still fails:
+
+```console
+./vendor/bin/fs-control test-config.yaml \
+    --fail-on-uncovered-paths --fail-on-unbounded-paths \
+    --baseline=baseline.yaml
+```
+
+Baseline paths are stored relative to a project root, which defaults to the current
+working directory. If you run the tool from elsewhere, pass `--project-root=DIR` so
+the generated and matched paths stay consistent between local and CI runs.
+
+As you fix the debt, baseline entries that no longer match any finding become "stale".
+Add `--fail-on-stale-baseline` to make the build fail until they are pruned — this keeps
+the baseline ratcheting down and prevents it from silently rotting:
+
+```console
+./vendor/bin/fs-control test-config.yaml \
+    --baseline=baseline.yaml --fail-on-stale-baseline
+```
+
+Stale entries are always listed under `Stale Baseline Paths` (with `--explain` showing
+the category they used to be reported in), regardless of whether the flag is set.
+
 ## Exit Codes
 
 * `0` - OK.
@@ -404,3 +456,4 @@ you can use the `--explain` flag, and `fs-control` will try to add explanations 
 * `3` - Found uncovered paths (only with flag `--fail-on-uncovered-paths`)
 * `4` - Found unbounded paths (only with flag `--fail-on-unbounded-paths`)
 * `5` - Extension raised an error (only when an extension activated in the config)
+* `6` - Found stale baseline paths (only with flag `--fail-on-stale-baseline`)

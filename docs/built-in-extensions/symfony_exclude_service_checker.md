@@ -48,3 +48,19 @@ Found violations for config: /path/to/your/symfony_config/services.yaml
        Broken paths:
            ../../../example-fs/Container/Application/View/
 ```
+
+## Baseline
+
+This extension takes part in the [baseline](../usage.md#baseline) workflow. Both finding
+kinds can be suppressed: not-excluded paths (category `not_excluded`) and broken paths
+(category `broken`). Run `--generate-baseline=FILE` to capture the current findings, then
+`--baseline=FILE` to suppress them — only newly introduced findings will fail afterwards:
+
+```yaml
+extensions:
+    symfony_exclude_service_checker:
+        not_excluded:
+            - example-fs/Container/Infrastructure/View
+        broken:
+            - "example-fs/Container/config/services.yaml::../../../example-fs/Container/Application/View/"
+```

@@ -11,13 +11,13 @@
 
 declare(strict_types=1);
 
-namespace FsControl\Test\Unit\Baseline;
+namespace FsControl\Test\Unit\Core;
 
-use FsControl\Baseline\PathNormalizer;
+use FsControl\Core\PathNormalizer;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \FsControl\Baseline\PathNormalizer
+ * @covers \FsControl\Core\PathNormalizer
  */
 class PathNormalizerTest extends TestCase
 {

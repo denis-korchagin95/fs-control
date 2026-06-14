@@ -448,6 +448,21 @@ the baseline ratcheting down and prevents it from silently rotting:
 Stale entries are always listed under `Stale Baseline Paths` (with `--explain` showing
 the category they used to be reported in), regardless of whether the flag is set.
 
+Extensions can take part in the baseline too. Findings reported by a baseline-aware
+extension (such as the [Symfony Exclude Service Checker](./built-in-extensions/symfony_exclude_service_checker.md))
+are captured by `--generate-baseline` and suppressed by `--baseline` just like core
+findings, but are stored under an `extensions:` subtree keyed by the extension and its
+finding category:
+
+```yaml
+violations:
+    - example-fs/Container/Domain/ParamConverter
+extensions:
+    symfony_exclude_service_checker:
+        not_excluded:
+            - example-fs/Container/Infrastructure/View
+```
+
 ## Exit Codes
 
 * `0` - OK.

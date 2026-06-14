@@ -16,14 +16,17 @@ namespace FsControl\BuiltInExtension\SymfonyExcludeServiceChecker;
 use FsControl\Core\Application;
 use FsControl\Core\PathHandleContext;
 use FsControl\Exception\ExtensionException;
+use FsControl\Extension\BaselineAwareExtension;
 use FsControl\Extension\ExtensionInterface;
 use Symfony\Component\Yaml\Yaml;
 
-class Extension implements ExtensionInterface
+class Extension implements ExtensionInterface, BaselineAwareExtension
 {
     private const CONFIG_KEY = 'symfony_exclude_service_checker';
     private const EXTENSION_INFO_KEY_CONFIG = self::class . ':config';
     private const EXTENSION_INFO_KEY_RESULT = self::class . ':result';
+    private const BASELINE_CATEGORY_NOT_EXCLUDED = self::CONFIG_KEY . ':not_excluded';
+    private const BASELINE_CATEGORY_BROKEN = self::CONFIG_KEY . ':broken';
 
     /**
      * {@inheritDoc}
@@ -175,7 +178,7 @@ class Extension implements ExtensionInterface
      */
     public function terminate(Application $application, $stream): bool
     {
-        $violations = $this->getViolationsForReport($application);
+        $violations = $this->filterBaselined($application, $this->collectViolations($application));
         if (count($violations) === 0) {
             return true;
         }
@@ -184,6 +187,7 @@ class Extension implements ExtensionInterface
             $this->reportViolationsForExcludePackage(
                 $stream,
                 $violation['notExcludedPaths'],
+                $violation['brokePaths'],
                 $violation['excludePackage'],
             );
             fwrite($stream, PHP_EOL);
@@ -192,12 +196,85 @@ class Extension implements ExtensionInterface
     }
 
     /**
+     * {@inheritDoc}
+     */
+    public function collectBaselineFindings(Application $application): array
+    {
+        $notExcluded = [];
+        $broken = [];
+        foreach ($this->collectViolations($application) as $violation) {
+            foreach ($violation['notExcludedPaths'] as $path) {
+                $notExcluded[] = $application->toProjectRelativePath($path);
+            }
+            foreach ($violation['brokePaths'] as $pattern) {
+                $broken[] = $this->brokenIdentity($application, $violation['excludePackage'], $pattern);
+            }
+        }
+
+        $findings = [];
+        if ($notExcluded !== []) {
+            $findings[self::BASELINE_CATEGORY_NOT_EXCLUDED] = $notExcluded;
+        }
+        if ($broken !== []) {
+            $findings[self::BASELINE_CATEGORY_BROKEN] = $broken;
+        }
+        return $findings;
+    }
+
+    /**
+     * Drops findings that are recorded in the baseline; a package with nothing left is removed.
+     *
+     * @param array{notExcludedPaths: string[], brokePaths: string[], excludePackage: ExcludePackage}[] $violations
+     *
+     * @return array{notExcludedPaths: string[], brokePaths: string[], excludePackage: ExcludePackage}[]
+     */
+    private function filterBaselined(Application $application, array $violations): array
+    {
+        $active = [];
+        foreach ($violations as $violation) {
+            $excludePackage = $violation['excludePackage'];
+            $notExcludedPaths = [];
+            foreach ($violation['notExcludedPaths'] as $path) {
+                $identity = $application->toProjectRelativePath($path);
+                if ($application->isFindingBaselined(self::BASELINE_CATEGORY_NOT_EXCLUDED, $identity)) {
+                    continue;
+                }
+                $notExcludedPaths[] = $path;
+            }
+            $brokePaths = [];
+            foreach ($violation['brokePaths'] as $pattern) {
+                $identity = $this->brokenIdentity($application, $excludePackage, $pattern);
+                if ($application->isFindingBaselined(self::BASELINE_CATEGORY_BROKEN, $identity)) {
+                    continue;
+                }
+                $brokePaths[] = $pattern;
+            }
+            if ($notExcludedPaths === [] && $brokePaths === []) {
+                continue;
+            }
+            $active[] = [
+                'notExcludedPaths' => $notExcludedPaths,
+                'brokePaths' => $brokePaths,
+                'excludePackage' => $excludePackage,
+            ];
+        }
+        return $active;
+    }
+
+    private function brokenIdentity(Application $application, ExcludePackage $excludePackage, string $pattern): string
+    {
+        return $application->toProjectRelativePath($excludePackage->configPath) . '::' . $pattern;
+    }
+
+    /**
      * @param resource $stream
      * @param string[] $notExcludePaths
+     * @param string[] $brokePaths
      */
     private function reportViolationsForExcludePackage(
         $stream,
         array $notExcludePaths,
+        array $brokePaths,
         ExcludePackage $excludePackage,
     ): void {
         fwrite($stream, 'Found violations for config: ' . $excludePackage->configPath . PHP_EOL);
@@ -208,25 +285,29 @@ class Extension implements ExtensionInterface
                 fwrite($stream, '           ' . $path . PHP_EOL);
             }
         }
-        if (count($excludePackage->brokePaths) > 0) {
+        if (count($brokePaths) > 0) {
             fwrite($stream, '       Broken paths:' . PHP_EOL);
-            foreach ($excludePackage->brokePaths as $path) {
+            foreach ($brokePaths as $path) {
                 fwrite($stream, '           ' . $path . PHP_EOL);
             }
         }
     }
 
     /**
-     * @return array{notExcludedPaths: string[], excludePackage: ExcludePackage}[]
+     * @return array{notExcludedPaths: string[], brokePaths: string[], excludePackage: ExcludePackage}[]
      */
-    private function getViolationsForReport(Application $application): array
+    private function collectViolations(Application $application): array
     {
         $violations = [];
         /** @var Config $config */
         $config = $application->getExtensionInfo(self::EXTENSION_INFO_KEY_CONFIG);
         foreach ($config->getExcludePackages() as $excludePackage) {
             $hash = spl_object_hash($excludePackage);
-            $violations[$hash] = ['notExcludedPaths' => [], 'excludePackage' => $excludePackage];
+            $violations[$hash] = [
+                'notExcludedPaths' => [],
+                'brokePaths' => $excludePackage->brokePaths,
+                'excludePackage' => $excludePackage,
+            ];
         }
         /** @var Result|null $result */
         $result = $application->getExtensionInfo(self::EXTENSION_INFO_KEY_RESULT);
@@ -236,21 +317,21 @@ class Extension implements ExtensionInterface
                 if (! array_key_exists($hash, $violations)) {
                     $violations[$hash] = [
                         'notExcludedPaths' => $excludePathResult['paths'],
-                        'excludePackage' => $excludePathResult['package']
+                        'brokePaths' => $excludePathResult['package']->brokePaths,
+                        'excludePackage' => $excludePathResult['package'],
                     ];
                     continue;
                 }
                 $violations[$hash]['notExcludedPaths'] = $excludePathResult['paths'];
             }
         }
-        foreach ($violations as $hash => $violation) {
-            if (
-                count($violation['notExcludedPaths']) === 0
-                && $violation['excludePackage']->hasViolations()
-            ) {
-                unset($violations[$hash]);
+        $collected = [];
+        foreach ($violations as $violation) {
+            if (count($violation['notExcludedPaths']) === 0 && count($violation['brokePaths']) === 0) {
+                continue;
             }
+            $collected[] = $violation;
         }
-        return array_values($violations);
+        return $collected;
     }
 }

@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace FsControl\Baseline;
+namespace FsControl\Core;
 
 class PathNormalizer
 {

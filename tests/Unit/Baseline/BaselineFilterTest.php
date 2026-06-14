@@ -15,7 +15,7 @@ namespace FsControl\Test\Unit\Baseline;
 
 use FsControl\Baseline\Baseline;
 use FsControl\Baseline\BaselineFilter;
-use FsControl\Baseline\PathNormalizer;
+use FsControl\Core\PathNormalizer;
 use FsControl\Core\Result;
 use PHPUnit\Framework\TestCase;
 
@@ -23,7 +23,7 @@ use PHPUnit\Framework\TestCase;
  * @covers \FsControl\Baseline\BaselineFilter
  * @covers \FsControl\Baseline\FilteredResult
  * @covers \FsControl\Baseline\Baseline
- * @covers \FsControl\Baseline\PathNormalizer
+ * @covers \FsControl\Core\PathNormalizer
  */
 class BaselineFilterTest extends TestCase
 {

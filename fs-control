@@ -46,8 +46,8 @@ require FS_CONTROL_AUTOLOAD_PATH;
 use FsControl\Baseline\Baseline;
 use FsControl\Baseline\BaselineFilter;
 use FsControl\Baseline\BaselineWriter;
-use FsControl\Baseline\PathNormalizer;
 use FsControl\Core\Application;
+use FsControl\Core\PathNormalizer;
 use FsControl\Exception\ConfigurationLoaderException;
 use FsControl\Exception\FsControlException;
 use FsControl\Loader\ConfigurationLoader;
@@ -184,6 +184,8 @@ if ($isNeedToShowVersion) {
 $directoryTreeLoader = new DirectoryTreeLoader(['.git']);
 $configurationLoader = new ConfigurationLoader();
 $filteredResult = null;
+$extensionBaselinedCount = 0;
+$extensionStalePaths = [];
 try {
     if ($configFile === null) {
         throw new ConfigurationLoaderException('Expected a config file!');
@@ -196,24 +198,44 @@ try {
     if ($resolvedProjectRoot === false) {
         throw new ConfigurationLoaderException('The invalid project root "' . $projectRoot . '"!');
     }
+    $pathNormalizer = new PathNormalizer($resolvedProjectRoot);
+    $baseline = $baselineFile !== null ? Baseline::loadFromFile($baselineFile) : null;
     $configuration = $configurationLoader->loadFromFile($resolvedConfigFile);
-    $application = new Application($directoryTreeLoader, $configuration);
+    $application = new Application($directoryTreeLoader, $configuration, $baseline, $pathNormalizer);
     $result = $application->run();
 
     if ($generateBaselineFile !== null) {
-        $baselineWriter = new BaselineWriter(new PathNormalizer($resolvedProjectRoot));
-        $baselineWriter->writeToFile($result, $generateBaselineFile);
+        $baselineWriter = new BaselineWriter($pathNormalizer);
+        $baselineWriter->writeToFile(
+            $result,
+            $generateBaselineFile,
+            $application->collectExtensionBaselineFindings(),
+        );
         fwrite(STDOUT, 'The baseline was written to "' . $generateBaselineFile . '".' . PHP_EOL);
         exit(CLI_CODE_OK);
     }
 
-    if ($baselineFile !== null) {
-        $baselineFilter = new BaselineFilter(
-            Baseline::loadFromFile($baselineFile),
-            new PathNormalizer($resolvedProjectRoot),
-        );
+    if ($baseline !== null) {
+        $baselineFilter = new BaselineFilter($baseline, $pathNormalizer);
         $filteredResult = $baselineFilter->apply($result);
         $result = $filteredResult->getResult();
+
+        $currentExtensionFindings = $application->collectExtensionBaselineFindings();
+        foreach ($currentExtensionFindings as $extensionCategory => $extensionIdentities) {
+            foreach ($extensionIdentities as $extensionIdentity) {
+                if ($baseline->has($extensionCategory, $extensionIdentity)) {
+                    ++$extensionBaselinedCount;
+                }
+            }
+        }
+        foreach ($baseline->extensionCategories() as $extensionCategory) {
+            $current = $currentExtensionFindings[$extensionCategory] ?? [];
+            foreach ($baseline->categoryValues($extensionCategory) as $baselineEntry) {
+                if (! in_array($baselineEntry, $current, true)) {
+                    $extensionStalePaths[] = ['path' => $baselineEntry, 'category' => $extensionCategory];
+                }
+            }
+        }
     }
 } catch (FsControlException $exception) {
     fwrite(STDERR, $exception->getMessage() . PHP_EOL);
@@ -307,12 +329,11 @@ if (
     fwrite(STDOUT, PHP_EOL);
 }
 
-if (
-    $filteredResult !== null
-    && $filteredResult->hasStalePaths()
-) {
+$stalePaths = $filteredResult !== null ? $filteredResult->getStalePaths() : [];
+$stalePaths = array_merge($stalePaths, $extensionStalePaths);
+if (count($stalePaths) > 0) {
     fwrite(STDOUT, 'Stale Baseline Paths:' . PHP_EOL);
-    foreach ($filteredResult->getStalePaths() as $stalePath) {
+    foreach ($stalePaths as $stalePath) {
         fwrite(STDOUT, $stalePath['path'] . PHP_EOL);
         if ($explain) {
             fwrite(STDOUT, '  No longer reported as "' . $stalePath['category'] . '"' . PHP_EOL . PHP_EOL);
@@ -328,7 +349,10 @@ fwrite(STDOUT, 'Excluded Paths: ' . $result->getExcludedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Bounded Paths: ' . $result->getBoundedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Allowed Paths: ' . $result->getAllowedPathCount() . PHP_EOL);
 if ($filteredResult !== null) {
-    fwrite(STDOUT, 'Baselined Paths: ' . $filteredResult->getBaselinedPathCount() . PHP_EOL);
+    fwrite(
+        STDOUT,
+        'Baselined Paths: ' . ($filteredResult->getBaselinedPathCount() + $extensionBaselinedCount) . PHP_EOL,
+    );
 }
 
 $returnCode = $result->hasViolationPaths() ? CLI_CODE_VIOLATION_PATHS : CLI_CODE_OK;
@@ -350,8 +374,7 @@ if (
 if (
     $returnCode === CLI_CODE_OK
     && $failOnStaleBaseline
-    && $filteredResult !== null
-    && $filteredResult->hasStalePaths()
+    && count($stalePaths) > 0
 ) {
     $returnCode = CLI_CODE_STALE_BASELINE;
 }

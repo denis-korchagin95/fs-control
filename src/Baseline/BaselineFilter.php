@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace FsControl\Baseline;
 
+use FsControl\Core\PathNormalizer;
 use FsControl\Core\Result;
 
 class BaselineFilter
@@ -76,10 +77,17 @@ class BaselineFilter
             $filtered->addUnboundedPath($unboundedPath['path'], $unboundedPath['reason']);
         }
 
+        // Only core categories are owned by this filter; extension categories are accounted
+        // for separately by the extension baseline workflow.
+        $coreCategories = [
+            Baseline::CATEGORY_VIOLATION,
+            Baseline::CATEGORY_UNCOVERED,
+            Baseline::CATEGORY_UNBOUNDED,
+        ];
         /** @var array{path: string, category: string}[] $stalePaths */
         $stalePaths = [];
-        foreach ($this->baseline->all() as $category => $relativePaths) {
-            foreach ($relativePaths as $relativePath) {
+        foreach ($coreCategories as $category) {
+            foreach ($this->baseline->categoryValues($category) as $relativePath) {
                 if (! isset($matched[$category][$relativePath])) {
                     $stalePaths[] = ['path' => $relativePath, 'category' => $category];
                 }

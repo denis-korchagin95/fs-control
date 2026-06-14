@@ -18,9 +18,11 @@ use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
 use function array_is_list;
+use function array_keys;
 use function in_array;
 use function is_array;
 use function is_string;
+use function str_contains;
 
 class Baseline
 {
@@ -92,12 +94,66 @@ class Baseline
             $entries[$category] = $paths;
         }
 
+        $rawExtensions = $rawBaseline['extensions'] ?? [];
+        if (! is_array($rawExtensions)) {
+            throw BaselineException::malformed($path, 'the "extensions" section must be a mapping');
+        }
+        foreach ($rawExtensions as $extensionKey => $subCategories) {
+            if (! is_string($extensionKey) || ! is_array($subCategories)) {
+                throw BaselineException::malformed($path, 'each "extensions" entry must be a mapping of categories');
+            }
+            foreach ($subCategories as $subCategory => $rawValues) {
+                if (! is_string($subCategory) || ! is_array($rawValues)) {
+                    throw BaselineException::malformed(
+                        $path,
+                        'the "extensions.' . $extensionKey . '" section must be a mapping of lists',
+                    );
+                }
+                $values = [];
+                foreach ($rawValues as $rawValue) {
+                    if (! is_string($rawValue)) {
+                        throw BaselineException::malformed(
+                            $path,
+                            'the "extensions.' . $extensionKey . '.' . $subCategory
+                            . '" section must contain only strings',
+                        );
+                    }
+                    $values[] = $rawValue;
+                }
+                $entries[$extensionKey . ':' . $subCategory] = $values;
+            }
+        }
+
         return new self($entries);
     }
 
     public function has(string $category, string $relativePath): bool
     {
         return in_array($relativePath, $this->entries[$category] ?? [], true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function categoryValues(string $category): array
+    {
+        return $this->entries[$category] ?? [];
+    }
+
+    /**
+     * The namespaced categories ("<extensionKey>:<subCategory>") present in the baseline.
+     *
+     * @return list<string>
+     */
+    public function extensionCategories(): array
+    {
+        $categories = [];
+        foreach (array_keys($this->entries) as $category) {
+            if (str_contains($category, ':')) {
+                $categories[] = $category;
+            }
+        }
+        return $categories;
     }
 
     /**

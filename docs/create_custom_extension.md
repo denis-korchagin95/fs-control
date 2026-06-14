@@ -56,3 +56,46 @@ fs_control:
     # some extension settings
   # rest of the config ...
 ```
+
+## Taking part in the baseline (optional)
+
+If your extension reports findings, it can opt into the [baseline](./usage.md#baseline)
+workflow by additionally implementing `FsControl\Extension\BaselineAwareExtension`. The
+core `ExtensionInterface` is unchanged, so this is fully optional.
+
+```php
+use FsControl\Extension\BaselineAwareExtension;
+
+class SomeNewExtension implements ExtensionInterface, BaselineAwareExtension
+{
+    private const NOT_EXCLUDED = 'some_new_extension:not_excluded';
+
+    // ... boot()/handle() ...
+
+    public function collectBaselineFindings(Application $application): array
+    {
+        // Enumerate the CURRENT findings as stable, project-relative identities.
+        // Keys are namespaced "<extensionKey>:<subCategory>".
+        return [self::NOT_EXCLUDED => [$application->toProjectRelativePath($somePath)]];
+    }
+
+    public function terminate(Application $application, $stream): bool
+    {
+        // Skip findings already recorded in the baseline and report only the rest.
+        if ($application->isFindingBaselined(self::NOT_EXCLUDED, $application->toProjectRelativePath($somePath))) {
+            return true;
+        }
+        // ... report the finding ... return false;
+    }
+}
+```
+
+* `collectBaselineFindings()` is used by `--generate-baseline` (so your findings end up in
+  the file) and by the stale/baselined accounting.
+* `Application::isFindingBaselined()` lets `terminate()` suppress a baselined finding (and
+  not fail the run for it).
+* `Application::toProjectRelativePath()` produces the same project-relative identity the core
+  uses, so generation and checking stay in sync.
+
+Findings are stored under an `extensions:` subtree in the baseline file — see the
+[baseline format](./usage.md#baseline).

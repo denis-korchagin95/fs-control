@@ -13,11 +13,16 @@ declare(strict_types=1);
 
 namespace FsControl\Core;
 
+use FsControl\Baseline\Baseline;
 use FsControl\Configuration\Configuration;
 use FsControl\Configuration\Rule;
 use FsControl\Exception\ExtensionException;
+use FsControl\Extension\BaselineAwareExtension;
 use FsControl\Extension\ExtensionInterface;
 use FsControl\Loader\DirectoryTreeLoader;
+
+use function array_values;
+use function array_unique;
 
 class Application
 {
@@ -37,8 +42,51 @@ class Application
     public function __construct(
         private readonly DirectoryTreeLoader $directoryTreeLoader,
         private readonly Configuration $configuration,
+        private readonly ?Baseline $baseline = null,
+        private readonly ?PathNormalizer $pathNormalizer = null,
     ) {
         $this->loadExtensions();
+    }
+
+    /**
+     * Whether a finding produced by an extension is recorded in the baseline.
+     */
+    public function isFindingBaselined(string $category, string $identity): bool
+    {
+        return $this->baseline?->has($category, $identity) ?? false;
+    }
+
+    /**
+     * Normalizes an absolute path to a project-relative identity (when a project root is known),
+     * so extension findings are keyed the same way as core findings in the baseline.
+     */
+    public function toProjectRelativePath(string $absolutePath): string
+    {
+        return $this->pathNormalizer?->toRelative($absolutePath) ?? $absolutePath;
+    }
+
+    /**
+     * Aggregates the current findings of every baseline-aware extension.
+     *
+     * @return array<string, list<string>> namespaced category => identities
+     */
+    public function collectExtensionBaselineFindings(): array
+    {
+        $findings = [];
+        foreach ($this->extensions as $extension) {
+            if (! $extension instanceof BaselineAwareExtension) {
+                continue;
+            }
+            foreach ($extension->collectBaselineFindings($this) as $category => $identities) {
+                foreach ($identities as $identity) {
+                    $findings[$category][] = $identity;
+                }
+            }
+        }
+        foreach ($findings as $category => $identities) {
+            $findings[$category] = array_values(array_unique($identities));
+        }
+        return $findings;
     }
 
     /**

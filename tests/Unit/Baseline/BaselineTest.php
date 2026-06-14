@@ -66,6 +66,51 @@ class BaselineTest extends TestCase
     /**
      * @test
      */
+    public function itShouldLoadExtensionEntriesAsNamespacedCategories(): void
+    {
+        $fs = vfsStream::setup('example', null, [
+            'baseline.yaml' => <<<YAML
+            violations:
+                - Foo/Application/Controller
+            extensions:
+                some_extension:
+                    not_excluded:
+                        - Foo/Infrastructure/View
+                    broken:
+                        - "config/services.yaml::../bad/path"
+            YAML,
+        ]);
+
+        $baseline = Baseline::loadFromFile($fs->url() . '/baseline.yaml');
+
+        self::assertTrue($baseline->has('some_extension:not_excluded', 'Foo/Infrastructure/View'));
+        self::assertTrue($baseline->has('some_extension:broken', 'config/services.yaml::../bad/path'));
+        self::assertSame(
+            ['some_extension:not_excluded', 'some_extension:broken'],
+            $baseline->extensionCategories(),
+        );
+        self::assertSame(['Foo/Infrastructure/View'], $baseline->categoryValues('some_extension:not_excluded'));
+        // core categories are not reported as extension categories
+        self::assertFalse(in_array(Baseline::CATEGORY_VIOLATION, $baseline->extensionCategories(), true));
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldThrowWhenAnExtensionSectionIsNotAList(): void
+    {
+        $fs = vfsStream::setup('example', null, [
+            'baseline.yaml' => "extensions:\n    some_extension:\n        not_excluded: not-a-list\n",
+        ]);
+
+        $this->expectException(BaselineException::class);
+
+        Baseline::loadFromFile($fs->url() . '/baseline.yaml');
+    }
+
+    /**
+     * @test
+     */
     public function itShouldThrowWhenTheFileDoesNotExist(): void
     {
         $this->expectException(BaselineException::class);

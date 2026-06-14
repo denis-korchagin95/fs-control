@@ -36,7 +36,7 @@ use function unlink;
  * @covers \FsControl\BuiltInExtension\SymfonyExcludeServiceChecker\Extension
  * @covers \FsControl\Core\Application
  */
-class SymfonyExtensionBaselineTest extends TestCase
+class SymfonyExtensionTest extends TestCase
 {
     private const NOT_EXCLUDED_CATEGORY = 'symfony_exclude_service_checker:not_excluded';
 
@@ -96,6 +96,31 @@ class SymfonyExtensionBaselineTest extends TestCase
 
         self::assertTrue($succeeded);
         self::assertSame('', $output);
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldSkipUnresolvableResourcesInsteadOfAborting(): void
+    {
+        // a glob resource and a parameter resource cannot be realpath()-ed; they must be
+        // skipped, not abort the whole run. The valid resource must still be processed.
+        file_put_contents(
+            $this->baseDir . '/config/services.yaml',
+            "services:\n"
+            . "  'App\\\\':\n    resource: '../src'\n    exclude:\n      - '../src/Domain/Entity'\n"
+            . "  'App\\\\Glob\\\\':\n    resource: '../src/Domain/Nope/*'\n"
+            . "  'App\\\\Param\\\\':\n    resource: '%kernel.project_dir%/src'\n",
+        );
+
+        // boot() runs inside the constructor; before the fix this threw an ExtensionException.
+        $application = $this->buildApplication(null);
+        $application->run();
+
+        self::assertSame(
+            [self::NOT_EXCLUDED_CATEGORY => ['src/Domain/View']],
+            $application->collectExtensionBaselineFindings(),
+        );
     }
 
     private function buildApplication(?Baseline $baseline): Application

@@ -83,10 +83,10 @@ class Extension implements ExtensionInterface, BaselineAwareExtension
                 }
                 $resourcePath = realpath($resource);
                 if ($resourcePath === false) {
-                    throw new ExtensionException(
-                        self::class,
-                        'Cannot resolve a resource path "' . $resource . '"!',
-                    );
+                    // Unresolvable resource (a glob like ".../Controller/*", a %kernel.project_dir%/...
+                    // parameter, or a path that no longer exists). It can never equal a scanned root,
+                    // so it cannot participate in the exclude check — skip it instead of aborting.
+                    continue;
                 }
                 $excludePaths = [];
                 $brokePaths = [];

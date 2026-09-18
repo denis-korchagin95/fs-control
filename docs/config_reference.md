@@ -223,6 +223,54 @@ The literal/glob distinction is preserved: an `exclude_paths` glob matches the e
 while an `exclude_dirs` glob also excludes everything nested under a matched directory. Glob entries are
 not resolved on disk, so they need not exist when the config is loaded.
 
+## Ignoring with `.fs-control-ignore`
+
+Besides the config's `exclude_paths` / `exclude_dirs`, you can keep directories out of analysis
+with a `.gitignore`-style file. The crucial difference is **reporting**:
+
+* `exclude_paths` / `exclude_dirs` are *deliberate* skips — they are still reported and counted
+  (under "Excluded Paths" / "Excluded Dirs"), because the intent is "I know this is here, I'm
+  skipping it for now".
+* `.fs-control-ignore` entries are **fully invisible**, just like `git` ignores a file: a matched
+  directory produces no finding in any category, is not counted, is not shown by any `--show-*`
+  flag, is never passed to extensions, and never lands in a baseline. Use it for directories that
+  simply are not part of your controlled tree (`vendor`, `node_modules`, generated/build/cache
+  output).
+
+### Location
+
+By default `fs-control` auto-discovers a single `.fs-control-ignore` in the project root (the
+current working directory, or `--project-root=DIR` when given). You can point at a different file
+with `--ignore-file=FILE`; when given explicitly, a missing/unreadable file is an error (an
+auto-discovered one that is absent is simply treated as "no ignore rules").
+
+```console
+./vendor/bin/fs-control config.yaml --ignore-file=tools/fs-control.ignore
+```
+
+### Syntax
+
+```gitignore
+# comments and blank lines are ignored
+
+vendor          # ignore the exact "vendor" directory (its contents are still analyzed)
+Generated/      # trailing "/" ignores the directory AND everything nested under it
+src/Snapshots/  # a "/" in the pattern anchors it relative to the scan root
+*.cache         # globs are supported (webmozart/glob)
+```
+
+* **Trailing `/`** ignores the matched directory together with its whole subtree; **without** a
+  trailing `/` only the exact matched directory is ignored (its descendants are still analyzed).
+* A pattern **without an internal `/`** matches that name at **any depth** under a scan root (so
+  `vendor` matches `Foo/vendor` too); a pattern **containing `/`** is anchored relative to the
+  scan root (`paths` entry).
+* `!` negation / re-inclusion is **not** supported.
+
+> [!NOTE]
+> Anchored (slash-containing) patterns are matched relative to each scan root, not relative to the
+> ignore file's own directory. For the common bare-name case (`vendor`, `node_modules`) this makes
+> no difference, since those match at any depth.
+
 ## Parameters
 
 Parameters can be used by built-in `fs-control` functions or its extensions in the section `parameters`.

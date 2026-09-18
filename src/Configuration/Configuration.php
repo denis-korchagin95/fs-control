@@ -46,6 +46,16 @@ class Configuration
     /**
      * @var string[]
      */
+    private array $ignoreSubtreeGlobs = [];
+
+    /**
+     * @var string[]
+     */
+    private array $ignoreExactGlobs = [];
+
+    /**
+     * @var string[]
+     */
     private array $groups = [];
 
     /**
@@ -118,6 +128,18 @@ class Configuration
             }
         }
         return $this->matchesGlob($path, $this->excludeDirGlobs, true);
+    }
+
+    /**
+     * Whether the path is ignored via the ".fs-control-ignore" file. Unlike exclude_dirs/paths,
+     * an ignored path is fully invisible to the tool — it produces no finding in any category.
+     * A subtree glob (trailing "/" in the ignore file) also ignores everything nested under a
+     * matched directory; an exact glob ignores only the matched directory itself.
+     */
+    public function isPathIgnored(string $path): bool
+    {
+        return $this->matchesGlob($path, $this->ignoreSubtreeGlobs, true)
+            || $this->matchesGlob($path, $this->ignoreExactGlobs, false);
     }
 
     /**
@@ -290,6 +312,20 @@ class Configuration
             throw new DuplicateConfigurationEntryException('The duplicated exclude dir glob "' . $glob . '"!');
         }
         $this->excludeDirGlobs[] = $glob;
+    }
+
+    public function addIgnoreSubtreeGlob(string $glob): void
+    {
+        if (! in_array($glob, $this->ignoreSubtreeGlobs, true)) {
+            $this->ignoreSubtreeGlobs[] = $glob;
+        }
+    }
+
+    public function addIgnoreExactGlob(string $glob): void
+    {
+        if (! in_array($glob, $this->ignoreExactGlobs, true)) {
+            $this->ignoreExactGlobs[] = $glob;
+        }
     }
 
     /**

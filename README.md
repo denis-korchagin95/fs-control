@@ -61,6 +61,10 @@ You can analyze the project using a configuration file for some project.
 ./vendor/bin/fs-control example-fs-config.yaml
 ```
 
+To keep directories such as `vendor` or generated code completely out of analysis, add a
+`.gitignore`-style [`.fs-control-ignore`](./docs/config_reference.md#ignoring-with-fs-control-ignore)
+file to your project root.
+
 See [usage](./docs/usage.md), [tool concepts](./docs/concepts.md),
 [built-in extension list](./docs/built_in_extensions.md),
 and [config reference](./docs/config_reference.md) documentation for more examples and details.

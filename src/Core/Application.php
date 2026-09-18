@@ -98,6 +98,11 @@ class Application
     private function handleOnePath(string $path, Result $result): void
     {
         foreach ($this->directoryTreeLoader->loadDirectoryTree($path) as $directoryPath) {
+            if ($this->configuration->isPathIgnored($directoryPath)) {
+                // fully invisible (like .gitignore): no finding recorded in any category,
+                // not counted, and never handed to extensions.
+                continue;
+            }
             if ($this->configuration->isPathExcluded($directoryPath)) {
                 $result->addExcludedPath(
                     $directoryPath,

@@ -43,6 +43,7 @@ use FsControl\Exception\ConfigurationLoaderException;
 use FsControl\Exception\FsControlException;
 use FsControl\Loader\ConfigurationLoader;
 use FsControl\Loader\DirectoryTreeLoader;
+use FsControl\Loader\IgnoreFileLoader;
 
 const CLI_CODE_OK = 0;
 const CLI_CODE_GENERAL_ERROR = 1;
@@ -70,6 +71,7 @@ $baselineFile = null;
 $generateBaselineFile = null;
 $projectRoot = null;
 $failOnStaleBaseline = false;
+$ignoreFile = null;
 
 foreach ($argv as $index => $argument) {
     if ($index === 0) {
@@ -135,6 +137,10 @@ foreach ($argv as $index => $argument) {
         $projectRoot = substr($argument, strlen('--project-root='));
         continue;
     }
+    if (str_starts_with($argument, '--ignore-file=')) {
+        $ignoreFile = substr($argument, strlen('--ignore-file='));
+        continue;
+    }
     if (str_starts_with($argument, '--')) {
         fwrite(STDERR, 'Unexpected option "' . $argument . '"!' . PHP_EOL);
         exit(CLI_CODE_GENERAL_ERROR);
@@ -166,6 +172,7 @@ Options:
         --generate-baseline=FILE   Write the current findings to the baseline file and exit
         --project-root=DIR         Root used to compute baseline-relative paths (default: cwd)
         --fail-on-stale-baseline   Fail when the baseline lists findings that no longer occur
+        --ignore-file=FILE         Ignore file with gitignore-style patterns (default: .fs-control-ignore in the project root)
 
 
 OUTPUT
@@ -198,6 +205,24 @@ try {
     $pathNormalizer = new PathNormalizer($resolvedProjectRoot);
     $baseline = $baselineFile !== null ? Baseline::loadFromFile($baselineFile) : null;
     $configuration = $configurationLoader->loadFromFile($resolvedConfigFile);
+
+    $resolvedIgnoreFile = $ignoreFile;
+    if ($resolvedIgnoreFile === null) {
+        $defaultIgnoreFile = $resolvedProjectRoot . DIRECTORY_SEPARATOR . '.fs-control-ignore';
+        if (is_file($defaultIgnoreFile)) {
+            $resolvedIgnoreFile = $defaultIgnoreFile;
+        }
+    }
+    if ($resolvedIgnoreFile !== null) {
+        $ignoreRules = (new IgnoreFileLoader())->loadFromFile($resolvedIgnoreFile);
+        foreach ($ignoreRules->getSubtreeGlobs() as $glob) {
+            $configuration->addIgnoreSubtreeGlob($glob);
+        }
+        foreach ($ignoreRules->getExactGlobs() as $glob) {
+            $configuration->addIgnoreExactGlob($glob);
+        }
+    }
+
     $application = new Application($directoryTreeLoader, $configuration, $baseline, $pathNormalizer);
     $result = $application->run();
 

@@ -298,6 +298,32 @@ in the tool output using the flag `--show-excluded-paths` for some reason.
 `deny_nested_rules` (boolean) - It is used as a heuristic rule to help keep
 the structure more linear and avoid deep nesting.
 
+`skip_empty_directories` (boolean, default: `false`) - Skips directories that hold nothing at all.
+Such a directory becomes fully invisible to the tool: it produces no finding in any category,
+is not counted anywhere, and is never handed to extensions - the same way an ignored path behaves.
+
+Only truly empty directories are skipped. A directory holding a file (`.gitkeep` included) is not
+empty, and neither is a directory holding only empty subdirectories - the subdirectories disappear
+while their parent is still analyzed:
+
+```yaml
+fs_control:
+  paths:
+    - ./example-fs/Container
+  parameters:
+    skip_empty_directories: true
+  groups:
+    Application: ~
+  bindings:
+    $/Application: Application
+  rules:
+    Permission:
+      - Application
+```
+
+The parameter defaults to `false`, so an existing config keeps reporting empty directories
+(usually as uncovered) until you opt in.
+
 ## Rule Attributes
 
 Just like parameters, rule attributes can be built-in or supported by extensions under section `rule_attributes`.

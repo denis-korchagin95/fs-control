@@ -451,5 +451,12 @@ class ConfigurationLoader
                 );
             }
         }
+        if ($name === 'skip_empty_directories') {
+            if (! is_bool($value)) {
+                throw new ConfigurationLoaderException(
+                    'The parameter "skip_empty_directories" must be a boolean!',
+                );
+            }
+        }
     }
 }

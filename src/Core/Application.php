@@ -14,6 +14,7 @@ use FsControl\Loader\DirectoryTreeLoader;
 
 use function array_values;
 use function array_unique;
+use function scandir;
 
 class Application
 {
@@ -97,10 +98,16 @@ class Application
      */
     private function handleOnePath(string $path, Result $result): void
     {
+        $parameters = $this->configuration->getParameters();
+        $skipEmptyDirectories = ($parameters['skip_empty_directories'] ?? false) === true;
+
         foreach ($this->directoryTreeLoader->loadDirectoryTree($path) as $directoryPath) {
             if ($this->configuration->isPathIgnored($directoryPath)) {
                 // fully invisible (like .gitignore): no finding recorded in any category,
                 // not counted, and never handed to extensions.
+                continue;
+            }
+            if ($skipEmptyDirectories && $this->isDirectoryEmpty($directoryPath)) {
                 continue;
             }
             if ($this->configuration->isPathExcluded($directoryPath)) {
@@ -157,7 +164,6 @@ class Application
                             $ruleNames[] = $rule->getName();
                         }
                     }
-                    $parameters = $this->configuration->getParameters();
                     $denyNestedRules = $parameters['deny_nested_rules'] ?? false;
                     if ($denyNestedRules === true && $ruleEntryCount > 1) {
                         $result->addViolationPath(
@@ -210,6 +216,20 @@ class Application
                 'The path is allowed by rules',
             );
         }
+    }
+
+    private function isDirectoryEmpty(string $directoryPath): bool
+    {
+        $entries = @scandir($directoryPath);
+        if ($entries === false) {
+            return false;
+        }
+        foreach ($entries as $entry) {
+            if ($entry !== '.' && $entry !== '..') {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

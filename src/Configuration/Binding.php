@@ -42,7 +42,7 @@ class Binding
     public function isBoundedFor(string $path): bool
     {
         return $path === $this->resolvedBindingPath
-            || str_contains($this->resolvedBindingPath, $path);
+            || str_starts_with($this->resolvedBindingPath, $path . DIRECTORY_SEPARATOR);
     }
 
     public function getId(): string

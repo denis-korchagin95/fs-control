@@ -209,23 +209,21 @@ class Configuration
      */
     private function matchesGlob(string $path, array $globs, bool $includeSubtree): bool
     {
-        $relativePath = $this->toScanRelative($path);
-        if ($relativePath === null) {
-            return false;
-        }
-        if ($this->relativePathMatchesGlob($relativePath, $globs)) {
-            return true;
-        }
-        if (! $includeSubtree) {
-            return false;
-        }
-        $segments = explode(DIRECTORY_SEPARATOR, $relativePath);
-        array_pop($segments);
-        while ($segments !== []) {
-            if ($this->relativePathMatchesGlob(implode(DIRECTORY_SEPARATOR, $segments), $globs)) {
+        foreach ($this->toScanRelativeCandidates($path) as $relativePath) {
+            if ($this->relativePathMatchesGlob($relativePath, $globs)) {
                 return true;
             }
+            if (! $includeSubtree) {
+                continue;
+            }
+            $segments = explode(DIRECTORY_SEPARATOR, $relativePath);
             array_pop($segments);
+            while ($segments !== []) {
+                if ($this->relativePathMatchesGlob(implode(DIRECTORY_SEPARATOR, $segments), $globs)) {
+                    return true;
+                }
+                array_pop($segments);
+            }
         }
         return false;
     }
@@ -244,21 +242,30 @@ class Configuration
     }
 
     /**
-     * Returns the given path relative to the scan root ("paths" entry) that contains it,
-     * or null when it lives under none of them.
+     * Returns the ways the given path can be anchored for glob matching, or an empty list when
+     * it lives under no scan root ("paths" entry).
+     *
+     * The first candidate is the path relative to its scan root. The second one keeps the scan
+     * root's own name in front, so a glob naming that very directory reaches it as well: a
+     * "paths" expansion like "./src/*" turns every sub-context into a scan root, and such a root
+     * must stay excludable by "**\/Legacy" just like a "Legacy" nested deeper.
+     *
+     * @return string[]
      */
-    private function toScanRelative(string $path): ?string
+    private function toScanRelativeCandidates(string $path): array
     {
         foreach ($this->paths as $root) {
+            $rootName = basename($root);
             if ($path === $root) {
-                return '';
+                return [$rootName];
             }
             $prefix = $root . DIRECTORY_SEPARATOR;
             if (str_starts_with($path, $prefix)) {
-                return substr($path, strlen($prefix));
+                $relativePath = substr($path, strlen($prefix));
+                return [$relativePath, $rootName . DIRECTORY_SEPARATOR . $relativePath];
             }
         }
-        return null;
+        return [];
     }
 
     public function getBindingForPath(string $path): ?BindingMatch

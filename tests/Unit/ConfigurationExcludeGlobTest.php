@@ -61,6 +61,29 @@ class ConfigurationExcludeGlobTest extends TestCase
     /**
      * @test
      */
+    public function itShouldExcludeTheSubtreeOfAScanRootNamedByAGlob(): void
+    {
+        // a "paths" expansion like "./root/*" turns every sub-context into a scan root,
+        // so a glob must reach such a root the same way it reaches a nested directory
+        $configuration = new Configuration('test-config', []);
+        $configuration->addPath('/root/Alpha');
+        $configuration->addPath('/root/Legacy');
+        $configuration->addExcludeDirGlob('**/Legacy');
+
+        self::assertTrue($configuration->isPathExcludedByDir('/root/Legacy/Junk'));
+        self::assertTrue($configuration->isPathExcludedByDir('/root/Legacy/Junk/deep'));
+        self::assertTrue($configuration->isPathExcludedByDir('/root/Alpha/Legacy'));
+
+        // the neighbour scan root is untouched
+        self::assertFalse($configuration->isPathExcludedByDir('/root/Alpha/Domain'));
+
+        // the scan root itself is never scanned, so nothing under it is an exclude root
+        self::assertFalse($configuration->isExcludeDirRoot('/root/Legacy/Junk'));
+    }
+
+    /**
+     * @test
+     */
     public function itShouldNotMatchGlobsForPathsOutsideAnyScanRoot(): void
     {
         $configuration = new Configuration('test-config', []);

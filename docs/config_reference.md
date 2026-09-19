@@ -262,6 +262,11 @@ The literal/glob distinction is preserved: an `exclude_paths` glob matches the e
 while an `exclude_dirs` glob also excludes everything nested under a matched directory. Glob entries are
 not resolved on disk, so they need not exist when the config is loaded.
 
+A glob also reaches a **scan root itself**, which matters when `paths` ends with a `*`: an entry like
+`./src/*` turns every sub-context into a scan root, and `'**/Legacy'` then drops the whole `src/Legacy`
+sub-context exactly as it drops a `Legacy` nested deeper. The scan root is never scanned as a directory
+of its own, so it is skipped silently instead of being listed under `Excluded Dirs`.
+
 ## Ignoring with `.fs-control-ignore`
 
 Besides the config's `exclude_paths` / `exclude_dirs`, you can keep directories out of analysis
@@ -301,8 +306,9 @@ src/Snapshots/  # a "/" in the pattern anchors it relative to the scan root
 * **Trailing `/`** ignores the matched directory together with its whole subtree; **without** a
   trailing `/` only the exact matched directory is ignored (its descendants are still analyzed).
 * A pattern **without an internal `/`** matches that name at **any depth** under a scan root (so
-  `vendor` matches `Foo/vendor` too); a pattern **containing `/`** is anchored relative to the
-  scan root (`paths` entry).
+  `vendor` matches `Foo/vendor` too), a scan root of that very name included - with `paths: ./src/*`
+  the pattern `vendor/` hides the whole `src/vendor` sub-context; a pattern **containing `/`** is
+  anchored relative to the scan root (`paths` entry).
 * `!` negation / re-inclusion is **not** supported.
 
 > [!NOTE]

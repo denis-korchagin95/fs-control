@@ -31,6 +31,25 @@ class ConfigurationIgnoreTest extends TestCase
     /**
      * @test
      */
+    public function itShouldIgnoreTheSubtreeOfAScanRootNamedByASubtreeGlob(): void
+    {
+        // "./root/*" in "paths" makes every sub-context a scan root; an ignored name
+        // ("vendor/" in the ignore file) must hide such a root as well
+        $configuration = new Configuration('test-config', []);
+        $configuration->addPath('/root/Alpha');
+        $configuration->addPath('/root/vendor');
+        $configuration->addIgnoreSubtreeGlob('**/vendor');
+
+        self::assertTrue($configuration->isPathIgnored('/root/vendor/package'));
+        self::assertTrue($configuration->isPathIgnored('/root/vendor/package/src'));
+        self::assertTrue($configuration->isPathIgnored('/root/Alpha/vendor'));
+
+        self::assertFalse($configuration->isPathIgnored('/root/Alpha/Domain'));
+    }
+
+    /**
+     * @test
+     */
     public function itShouldIgnoreExactGlobsButNotTheirSubtree(): void
     {
         $configuration = new Configuration('test-config', []);

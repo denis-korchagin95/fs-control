@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace FsControl\Test\Integrational;
 
+use FsControl\Configuration\Configuration;
 use FsControl\Exception\ConfigurationLoaderException;
+use FsControl\Exception\ConfigurationModeException;
 use FsControl\Loader\ConfigurationLoader;
 use PHPUnit\Framework\TestCase;
 
@@ -21,6 +23,7 @@ use function unlink;
  * @covers \FsControl\Loader\ConfigurationLoader
  * @covers \FsControl\Configuration\Configuration
  * @covers \FsControl\Exception\ConfigurationLoaderException
+ * @covers \FsControl\Exception\ConfigurationModeException
  */
 class ConfigurationLoaderTest extends TestCase
 {
@@ -150,6 +153,72 @@ class ConfigurationLoaderTest extends TestCase
 
         (new ConfigurationLoader())->loadFromFile(
             $this->writeConfig("fs_control:\n  paths:\n    - " . $this->baseDir . "/*/ctx\n"),
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldUseTheStrictModeWhenTheModeIsNotGiven(): void
+    {
+        mkdir($this->baseDir . '/ctx', 0777, true);
+
+        $configuration = (new ConfigurationLoader())->loadFromFile(
+            $this->writeConfig("fs_control:\n  paths:\n    - " . $this->baseDir . "/ctx\n"),
+        );
+
+        self::assertSame(Configuration::MODE_STRICT, $configuration->getMode());
+        self::assertFalse($configuration->isTolerantMode());
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldReadTheTolerantMode(): void
+    {
+        mkdir($this->baseDir . '/ctx', 0777, true);
+
+        $configuration = (new ConfigurationLoader())->loadFromFile(
+            $this->writeConfig(
+                "fs_control:\n  mode: tolerant\n  paths:\n    - " . $this->baseDir . "/ctx\n",
+            ),
+        );
+
+        self::assertSame(Configuration::MODE_TOLERANT, $configuration->getMode());
+        self::assertTrue($configuration->isTolerantMode());
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldRejectAnUnknownMode(): void
+    {
+        mkdir($this->baseDir . '/ctx', 0777, true);
+
+        $this->expectException(ConfigurationModeException::class);
+        $this->expectExceptionMessage('The unknown mode "whatever"! Expected one of: strict, tolerant.');
+
+        (new ConfigurationLoader())->loadFromFile(
+            $this->writeConfig(
+                "fs_control:\n  mode: whatever\n  paths:\n    - " . $this->baseDir . "/ctx\n",
+            ),
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldRejectANonStringMode(): void
+    {
+        mkdir($this->baseDir . '/ctx', 0777, true);
+
+        $this->expectException(ConfigurationLoaderException::class);
+        $this->expectExceptionMessage('The "mode" should be a string!');
+
+        (new ConfigurationLoader())->loadFromFile(
+            $this->writeConfig(
+                "fs_control:\n  mode: true\n  paths:\n    - " . $this->baseDir . "/ctx\n",
+            ),
         );
     }
 

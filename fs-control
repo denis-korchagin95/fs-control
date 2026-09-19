@@ -58,6 +58,7 @@ $configFile = null;
 
 $showUncoveredPaths = false;
 $showUnboundedPaths = false;
+$showOutOfCoveragePaths = false;
 $showExcludedPaths = false;
 $showExcludedDirs = false;
 $showAllowedPaths = false;
@@ -72,6 +73,7 @@ $generateBaselineFile = null;
 $projectRoot = null;
 $failOnStaleBaseline = false;
 $ignoreFile = null;
+$mode = null;
 
 foreach ($argv as $index => $argument) {
     if ($index === 0) {
@@ -91,6 +93,10 @@ foreach ($argv as $index => $argument) {
     }
     if ($argument === '--show-unbounded-paths') {
         $showUnboundedPaths = true;
+        continue;
+    }
+    if ($argument === '--show-out-of-coverage-paths') {
+        $showOutOfCoveragePaths = true;
         continue;
     }
     if ($argument === '--show-excluded-paths') {
@@ -141,6 +147,10 @@ foreach ($argv as $index => $argument) {
         $ignoreFile = substr($argument, strlen('--ignore-file='));
         continue;
     }
+    if (str_starts_with($argument, '--mode=')) {
+        $mode = substr($argument, strlen('--mode='));
+        continue;
+    }
     if (str_starts_with($argument, '--')) {
         fwrite(STDERR, 'Unexpected option "' . $argument . '"!' . PHP_EOL);
         exit(CLI_CODE_GENERAL_ERROR);
@@ -157,22 +167,24 @@ if ($isNeedToShowHelp) {
 Usage: fs-control [FILE] [OPTION]...
 
 Options:
-        --help                     Displays this usage information
-        --version                  Displays the version
-        --show-uncovered-paths     Show uncovered paths (out of rules)
-        --show-unbounded-paths     Show unbounded paths (not configured for tool in binding section)
-        --show-excluded-paths      Show excluded paths
-        --show-excluded-dirs       Show excluded dirs
-        --show-allowed-paths       Show allowed paths
-        --show-bounded-paths       Show bounded paths
-        --fail-on-uncovered-paths  Treat uncovered paths as failures
-        --fail-on-unbounded-paths  Treat unbounded paths as failures
-        --explain                  Explains why each path is in its category
-        --baseline=FILE            Ignore findings recorded in the baseline file
-        --generate-baseline=FILE   Write the current findings to the baseline file and exit
-        --project-root=DIR         Root used to compute baseline-relative paths (default: cwd)
-        --fail-on-stale-baseline   Fail when the baseline lists findings that no longer occur
-        --ignore-file=FILE         Ignore file with gitignore-style patterns (default: .fs-control-ignore in the project root)
+        --help                        Displays this usage information
+        --version                     Displays the version
+        --show-uncovered-paths        Show uncovered paths (out of rules)
+        --show-unbounded-paths        Show unbounded paths (not configured for tool in binding section)
+        --show-out-of-coverage-paths  Show out of coverage paths (tolerant mode only)
+        --show-excluded-paths         Show excluded paths
+        --show-excluded-dirs          Show excluded dirs
+        --show-allowed-paths          Show allowed paths
+        --show-bounded-paths          Show bounded paths
+        --fail-on-uncovered-paths     Treat uncovered paths as failures
+        --fail-on-unbounded-paths     Treat unbounded paths as failures
+        --explain                     Explains why each path is in its category
+        --baseline=FILE               Ignore findings recorded in the baseline file
+        --generate-baseline=FILE      Write the current findings to the baseline file and exit
+        --project-root=DIR            Root used to compute baseline-relative paths (default: cwd)
+        --fail-on-stale-baseline      Fail when the baseline lists findings that no longer occur
+        --ignore-file=FILE            Ignore file with gitignore-style patterns (default: .fs-control-ignore in the project root)
+        --mode=MODE                   Override the config mode: "strict" (default) or "tolerant"
 
 
 OUTPUT
@@ -205,6 +217,10 @@ try {
     $pathNormalizer = new PathNormalizer($resolvedProjectRoot);
     $baseline = $baselineFile !== null ? Baseline::loadFromFile($baselineFile) : null;
     $configuration = $configurationLoader->loadFromFile($resolvedConfigFile);
+
+    if ($mode !== null) {
+        $configuration->setMode($mode);
+    }
 
     $resolvedIgnoreFile = $ignoreFile;
     if ($resolvedIgnoreFile === null) {
@@ -310,6 +326,20 @@ if (
 }
 
 if (
+    $showOutOfCoveragePaths
+    && $result->hasOutOfCoveragePaths()
+) {
+    fwrite(STDOUT, 'Out Of Coverage Paths:' . PHP_EOL);
+    foreach ($result->getOutOfCoveragePaths() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['description'] . PHP_EOL . PHP_EOL);
+        }
+    }
+    fwrite(STDOUT, PHP_EOL);
+}
+
+if (
     $showExcludedPaths
     && $result->hasExcludedPaths()
 ) {
@@ -381,6 +411,9 @@ if (count($stalePaths) > 0) {
 fwrite(STDOUT, 'Violation Paths: ' . $result->getViolationPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Uncovered Paths: ' . $result->getUncoveredPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Unbounded Paths: ' . $result->getUnboundedPathCount() . PHP_EOL);
+if ($configuration->isTolerantMode()) {
+    fwrite(STDOUT, 'Out Of Coverage Paths: ' . $result->getOutOfCoveragePathCount() . PHP_EOL);
+}
 fwrite(STDOUT, 'Excluded Paths: ' . $result->getExcludedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Excluded Dirs: ' . $result->getExcludedDirCount() . PHP_EOL);
 fwrite(STDOUT, 'Bounded Paths: ' . $result->getBoundedPathCount() . PHP_EOL);

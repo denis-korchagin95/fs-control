@@ -29,6 +29,9 @@ class BaselineFilter
         foreach ($result->getBoundedPaths() as $boundedPath) {
             $filtered->addBoundedPath($boundedPath['path'], $boundedPath['description']);
         }
+        foreach ($result->getOutOfCoveragePaths() as $outOfCoveragePath) {
+            $filtered->addOutOfCoveragePath($outOfCoveragePath['path'], $outOfCoveragePath['description']);
+        }
         foreach ($result->getExcludedPaths() as $excludedPath) {
             $filtered->addExcludedPath($excludedPath['path'], $excludedPath['description']);
         }

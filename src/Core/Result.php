@@ -34,6 +34,11 @@ class Result
     /**
      * @var array{path: string, description: string}[]
      */
+    private array $outOfCoveragePaths = [];
+
+    /**
+     * @var array{path: string, description: string}[]
+     */
     private array $excludedPaths = [];
 
     /**
@@ -64,6 +69,11 @@ class Result
     public function addViolationPath(string $path, string $reason): void
     {
         $this->violationPaths[] = ['path' => $path, 'reason' => $reason];
+    }
+
+    public function addOutOfCoveragePath(string $path, string $description): void
+    {
+        $this->outOfCoveragePaths[] = ['path' => $path, 'description' => $description];
     }
 
     public function addExcludedPath(string $path, string $description): void
@@ -119,6 +129,14 @@ class Result
     /**
      * @return array{path: string, description: string}[]
      */
+    public function getOutOfCoveragePaths(): array
+    {
+        return $this->outOfCoveragePaths;
+    }
+
+    /**
+     * @return array{path: string, description: string}[]
+     */
     public function getExcludedPaths(): array
     {
         return $this->excludedPaths;
@@ -157,6 +175,11 @@ class Result
         return count($this->boundedPaths);
     }
 
+    public function getOutOfCoveragePathCount(): int
+    {
+        return count($this->outOfCoveragePaths);
+    }
+
     public function getExcludedPathCount(): int
     {
         return count($this->excludedPaths);
@@ -180,6 +203,11 @@ class Result
     public function hasUnboundedPaths(): bool
     {
         return $this->unboundedPaths !== [];
+    }
+
+    public function hasOutOfCoveragePaths(): bool
+    {
+        return $this->outOfCoveragePaths !== [];
     }
 
     public function hasExcludedPaths(): bool

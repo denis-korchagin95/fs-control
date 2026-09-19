@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FsControl\Configuration;
 
+use FsControl\Exception\ConfigurationModeException;
 use FsControl\Exception\DuplicateConfigurationEntryException;
 use FsControl\Exception\RuleReferToUnknownGroupException;
 use Webmozart\Glob\Glob;
@@ -18,6 +19,26 @@ use function substr;
 
 class Configuration
 {
+    /**
+     * Every path is judged against the rules: one that no binding or rule covers is reported
+     * as unbounded/uncovered. This is the default, so an existing config keeps its behavior.
+     */
+    public const MODE_STRICT = 'strict';
+
+    /**
+     * The defined rules are still enforced — a covered path that breaks its rule is a violation
+     * as usual — but a path that no binding or rule covers is reported as out of coverage
+     * instead of unbounded/uncovered, and never fails the run.
+     */
+    public const MODE_TOLERANT = 'tolerant';
+
+    public const MODES = [
+        self::MODE_STRICT,
+        self::MODE_TOLERANT,
+    ];
+
+    private string $mode = self::MODE_STRICT;
+
     /**
      * @var string[]
      */
@@ -99,6 +120,27 @@ class Configuration
     ) {
         $this->configPath = $configPath;
         $this->rawConfiguration = $rawConfiguration;
+    }
+
+    /**
+     * @throws ConfigurationModeException
+     */
+    public function setMode(string $mode): void
+    {
+        if (! in_array($mode, self::MODES, true)) {
+            throw ConfigurationModeException::unknownMode($mode);
+        }
+        $this->mode = $mode;
+    }
+
+    public function getMode(): string
+    {
+        return $this->mode;
+    }
+
+    public function isTolerantMode(): bool
+    {
+        return $this->mode === self::MODE_TOLERANT;
     }
 
     public function isPathBounded(string $path): bool

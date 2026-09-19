@@ -37,6 +37,45 @@ A config file should be passed to `fs-control` as a main argument.
 
 You can look at example config `example-fs-config.yaml` and apply the recommended settings to your project.
 
+## Modes
+
+The top-level `mode` key chooses how strictly the tool treats what the config does not describe.
+When the key is omitted the mode is `strict`, so an existing config behaves exactly as before.
+
+```yaml
+fs_control:
+  mode: tolerant
+  paths:
+    - ./src
+  groups:
+    Domain: ~
+  bindings:
+    $/Domain: Domain
+  rules:
+    Entity:
+      - Domain
+```
+
+`strict` (default) - every scanned directory is judged: one that no binding reaches is reported
+as unbounded, and one that no rule covers is reported as uncovered.
+
+`tolerant` - the rules you did define are still matched and tracked exactly as in the strict mode:
+a covered path that breaks its rule is a violation, and a path allowed by its rule stays allowed.
+Everything the config does not describe falls into a separate `Out Of Coverage Paths` category
+instead of uncovered/unbounded. Those paths never fail the run - `--fail-on-uncovered-paths`
+and `--fail-on-unbounded-paths` do not apply to them - and are never written to a baseline.
+Use `--show-out-of-coverage-paths` (with `--explain` for the reason) to list them.
+
+The mode can be overridden per run with the CLI option, without touching the config:
+
+```console
+./vendor/bin/fs-control example-fs-config.yaml --mode=tolerant
+```
+
+Tolerant mode suits a project that adopts the tool gradually: describe the layers you already
+control, keep them enforced, and let the rest of the tree stay visible but quiet until you
+get to it.
+
 ## Multiple paths
 
 The `fs-control` don't state the philosophy about 1 config per 1 logic project part.

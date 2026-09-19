@@ -100,6 +100,7 @@ class Application
     {
         $parameters = $this->configuration->getParameters();
         $skipEmptyDirectories = ($parameters['skip_empty_directories'] ?? false) === true;
+        $isTolerantMode = $this->configuration->isTolerantMode();
 
         foreach ($this->directoryTreeLoader->loadDirectoryTree($path) as $directoryPath) {
             if ($this->configuration->isPathIgnored($directoryPath)) {
@@ -145,6 +146,14 @@ class Application
                 continue;
             }
             if ($pathHandleContext->binding === null) {
+                if ($isTolerantMode) {
+                    $result->addOutOfCoveragePath(
+                        $directoryPath,
+                        'The path is out of coverage because no bindings configured for it in the config "'
+                        . $this->configuration->getConfigName() . '"',
+                    );
+                    continue;
+                }
                 $result->addUnboundedPath(
                     $directoryPath,
                     'The path cannot be analyzed because no bindings configured in the config "'
@@ -195,6 +204,13 @@ class Application
                             continue;
                         }
                     }
+                }
+                if ($isTolerantMode) {
+                    $result->addOutOfCoveragePath(
+                        $directoryPath,
+                        'The path is out of coverage because it is not covered by any rules',
+                    );
+                    continue;
                 }
                 $result->addUncoveredPath(
                     $directoryPath,

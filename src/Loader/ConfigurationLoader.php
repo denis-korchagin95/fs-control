@@ -8,6 +8,7 @@ use FsControl\Configuration\Binding;
 use FsControl\Configuration\Configuration;
 use FsControl\Configuration\Rule;
 use FsControl\Exception\ConfigurationLoaderException;
+use FsControl\Exception\ConfigurationModeException;
 use FsControl\Exception\DuplicateConfigurationEntryException;
 use FsControl\Exception\RuleReferToUnknownGroupException;
 use FsControl\Exception\WrongRuleException;
@@ -21,6 +22,7 @@ class ConfigurationLoader
     /**
      * @throws RuleReferToUnknownGroupException
      * @throws ConfigurationLoaderException
+     * @throws ConfigurationModeException
      * @throws DuplicateConfigurationEntryException
      * @throws WrongRuleException
      */
@@ -43,6 +45,7 @@ class ConfigurationLoader
 
         $configuration = new Configuration($filePath, $rawConfiguration);
 
+        $this->resolveMode($configuration, $rawFsControl);
         $this->resolvePaths($configuration, $this->arraySection($rawFsControl, 'paths'));
         $this->resolveExcludePaths($configuration, $this->arraySection($rawFsControl, 'exclude_paths'));
         $this->resolveExcludeDirs($configuration, $this->arraySection($rawFsControl, 'exclude_dirs'));
@@ -62,6 +65,24 @@ class ConfigurationLoader
         }
 
         return $configuration;
+    }
+
+    /**
+     * @param array<mixed> $rawFsControl
+     *
+     * @throws ConfigurationLoaderException
+     * @throws ConfigurationModeException
+     */
+    private function resolveMode(Configuration $configuration, array $rawFsControl): void
+    {
+        if (! array_key_exists('mode', $rawFsControl)) {
+            return;
+        }
+        $mode = $rawFsControl['mode'];
+        if (! is_string($mode)) {
+            throw new ConfigurationLoaderException('The "mode" should be a string!');
+        }
+        $configuration->setMode($mode);
     }
 
     /**

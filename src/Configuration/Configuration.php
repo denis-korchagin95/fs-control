@@ -90,6 +90,11 @@ class Configuration
     private array $rules = [];
 
     /**
+     * @var array<string, Rule>
+     */
+    private array $ruleAliases = [];
+
+    /**
      * @var array<string, scalar|null>
      */
     private array $defaultRuleAttributes = [];
@@ -305,7 +310,17 @@ class Configuration
 
     public function findRuleByName(string $name): ?Rule
     {
-        return $this->rules[$name] ?? null;
+        return $this->rules[$name] ?? $this->ruleAliases[$name] ?? null;
+    }
+
+    public function hasDeprecatedAliases(): bool
+    {
+        foreach ($this->rules as $rule) {
+            if ($rule->getDeprecatedAliases() !== []) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -422,6 +437,7 @@ class Configuration
 
     /**
      * @throws RuleReferToUnknownGroupException
+     * @throws DuplicateConfigurationEntryException
      */
     public function addRule(Rule $rule): void
     {
@@ -429,6 +445,18 @@ class Configuration
             if (! $this->hasGroup($group)) {
                 throw new RuleReferToUnknownGroupException($rule, $group);
             }
+        }
+        foreach ($rule->getNames() as $name) {
+            $owner = $this->findRuleByName($name);
+            if ($owner !== null && $owner->getName() !== $rule->getName()) {
+                throw new DuplicateConfigurationEntryException(
+                    'The name "' . $name . '" of the rule "' . $rule->getName()
+                    . '" is already used by the rule "' . $owner->getName() . '"!',
+                );
+            }
+        }
+        foreach ([...$rule->getAllowedAliases(), ...$rule->getDeprecatedAliases()] as $alias) {
+            $this->ruleAliases[$alias] = $rule;
         }
         $this->rules[$rule->getName()] = $rule;
     }

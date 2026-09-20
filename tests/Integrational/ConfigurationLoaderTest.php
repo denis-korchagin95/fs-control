@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FsControl\Test\Integrational;
 
 use FsControl\Configuration\Configuration;
+use FsControl\Configuration\Rule;
 use FsControl\Exception\ConfigurationLoaderException;
 use FsControl\Exception\ConfigurationModeException;
 use FsControl\Loader\ConfigurationLoader;
@@ -218,6 +219,77 @@ class ConfigurationLoaderTest extends TestCase
         (new ConfigurationLoader())->loadFromFile(
             $this->writeConfig(
                 "fs_control:\n  mode: true\n  paths:\n    - " . $this->baseDir . "/ctx\n",
+            ),
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldLoadBothTheShortAndTheExpandedRuleForms(): void
+    {
+        mkdir($this->baseDir . '/ctx', 0777, true);
+
+        $configuration = (new ConfigurationLoader())->loadFromFile(
+            $this->writeConfig(
+                "fs_control:\n  paths:\n    - " . $this->baseDir . "/ctx\n"
+                . "  groups:\n    Domain: ~\n  bindings:\n    $/Domain: Domain\n"
+                . "  rules:\n"
+                . "    Entity:\n      - Domain\n"
+                . "    Repository:\n      groups:\n        - Domain\n"
+                . "      allowed_aliases:\n        - Repo\n"
+                . "      deprecated_aliases:\n        - Manager\n",
+            ),
+        );
+
+        self::assertSame('Entity', $configuration->findRuleByName('Entity')?->getName());
+        self::assertSame('Repository', $configuration->findRuleByName('Repo')?->getName());
+        self::assertSame('Repository', $configuration->findRuleByName('Manager')?->getName());
+        $repository = $configuration->findRuleByName('Manager');
+        self::assertInstanceOf(Rule::class, $repository);
+        self::assertTrue($repository->isDeprecatedName('Manager'));
+        self::assertSame(['Repo'], $repository->getAllowedAliases());
+        self::assertTrue($configuration->hasDeprecatedAliases());
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldRejectAnUnknownKeyOfTheExpandedRuleForm(): void
+    {
+        mkdir($this->baseDir . '/ctx', 0777, true);
+
+        $this->expectException(ConfigurationLoaderException::class);
+        $this->expectExceptionMessage(
+            'The unknown key "aliases" of the rule "Repository"!'
+            . ' Expected one of: groups, allowed_aliases, deprecated_aliases.',
+        );
+
+        (new ConfigurationLoader())->loadFromFile(
+            $this->writeConfig(
+                "fs_control:\n  paths:\n    - " . $this->baseDir . "/ctx\n"
+                . "  groups:\n    Domain: ~\n  bindings:\n    $/Domain: Domain\n"
+                . "  rules:\n    Repository:\n      groups:\n        - Domain\n"
+                . "      aliases:\n        - Repo\n",
+            ),
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function itShouldRejectTheExpandedRuleFormWithoutGroups(): void
+    {
+        mkdir($this->baseDir . '/ctx', 0777, true);
+
+        $this->expectException(ConfigurationLoaderException::class);
+        $this->expectExceptionMessage('The rule "Repository" should have the "groups" key!');
+
+        (new ConfigurationLoader())->loadFromFile(
+            $this->writeConfig(
+                "fs_control:\n  paths:\n    - " . $this->baseDir . "/ctx\n"
+                . "  groups:\n    Domain: ~\n  bindings:\n    $/Domain: Domain\n"
+                . "  rules:\n    Repository:\n      allowed_aliases:\n        - Repo\n",
             ),
         );
     }

@@ -37,6 +37,11 @@ class Result
     private array $outOfCoveragePaths = [];
 
     /**
+     * @var array{path: string, reason: string}[]
+     */
+    private array $deprecatedPaths = [];
+
+    /**
      * @var array{path: string, description: string}[]
      */
     private array $excludedPaths = [];
@@ -74,6 +79,11 @@ class Result
     public function addOutOfCoveragePath(string $path, string $description): void
     {
         $this->outOfCoveragePaths[] = ['path' => $path, 'description' => $description];
+    }
+
+    public function addDeprecatedPath(string $path, string $reason): void
+    {
+        $this->deprecatedPaths[] = ['path' => $path, 'reason' => $reason];
     }
 
     public function addExcludedPath(string $path, string $description): void
@@ -135,6 +145,14 @@ class Result
     }
 
     /**
+     * @return array{path: string, reason: string}[]
+     */
+    public function getDeprecatedPaths(): array
+    {
+        return $this->deprecatedPaths;
+    }
+
+    /**
      * @return array{path: string, description: string}[]
      */
     public function getExcludedPaths(): array
@@ -180,6 +198,11 @@ class Result
         return count($this->outOfCoveragePaths);
     }
 
+    public function getDeprecatedPathCount(): int
+    {
+        return count($this->deprecatedPaths);
+    }
+
     public function getExcludedPathCount(): int
     {
         return count($this->excludedPaths);
@@ -208,6 +231,11 @@ class Result
     public function hasOutOfCoveragePaths(): bool
     {
         return $this->outOfCoveragePaths !== [];
+    }
+
+    public function hasDeprecatedPaths(): bool
+    {
+        return $this->deprecatedPaths !== [];
     }
 
     public function hasExcludedPaths(): bool

@@ -369,6 +369,62 @@ fs_control:
 The parameter defaults to `false`, so an existing config keeps reporting empty directories
 (usually as uncovered) until you opt in.
 
+## Rule aliases
+
+A rule value is normally the list of groups it may live in. It can also be written as a mapping,
+which additionally gives the rule other directory names it answers to:
+
+```yaml
+fs_control:
+  paths:
+    - ./src
+  groups:
+    Domain: ~
+  bindings:
+    $/Domain: Domain
+  rules:
+    Entity:
+      - Domain                  # the short form keeps working
+    Repository:
+      groups:
+        - Domain
+      allowed_aliases:
+        - Repo
+      deprecated_aliases:
+        - Manager
+        - Mapper
+```
+
+Both forms may be mixed in one config. In the expanded form `groups` is required and any other key
+than `groups`, `allowed_aliases` and `deprecated_aliases` is rejected.
+
+An alias is resolved to the very rule that declares it, so **everywhere a rule name is recognized an
+alias is recognized too**: the `**` wildcard stops on it, `deny_nested_rules` counts it as a rule
+entry, and the rule's `rule_attributes` (including `allowed_subdirectory_level`) apply to it.
+A directory name belongs to one rule only - reusing a name as another rule's name or alias is a
+configuration error.
+
+`allowed_aliases` are plain synonyms: such a directory is **allowed**, and `--explain` names the
+alias it matched.
+
+`deprecated_aliases` are names that still work but should not be used for new directories. Such a
+directory is reported in its own `Deprecated Paths` category - covered by the rule, so it is neither
+uncovered nor allowed:
+
+```console
+./vendor/bin/fs-control config.yaml --show-deprecated-paths --explain
+```
+
+* It fails the run only with `--fail-on-deprecated-paths` (exit code `7`).
+* It is written to the baseline under the `deprecated` category, so the existing directories are
+  grandfathered while any newly created one shows up as a fresh finding - which is the point of the
+  feature. `--fail-on-stale-baseline` sees the category as well, so a completed rename is noticed.
+* Only the rule directory itself is reported, not its subdirectories: one rename is one finding.
+* A group violation wins over deprecation: a deprecated name placed in a foreign group is reported
+  as a violation, and shows up as deprecated once the group is fixed.
+* The `Deprecated Paths` summary line appears only when the config declares at least one
+  `deprecated_aliases`, so a config not using the feature keeps its previous output.
+
 ## Rule Attributes
 
 Just like parameters, rule attributes can be built-in or supported by extensions under section `rule_attributes`.

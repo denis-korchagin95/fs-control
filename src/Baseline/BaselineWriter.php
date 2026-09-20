@@ -34,6 +34,7 @@ class BaselineWriter
             Baseline::CATEGORY_VIOLATION => $result->getViolationPaths(),
             Baseline::CATEGORY_UNCOVERED => $result->getUncoveredPaths(),
             Baseline::CATEGORY_UNBOUNDED => $result->getUnboundedPaths(),
+            Baseline::CATEGORY_DEPRECATED => $result->getDeprecatedPaths(),
         ];
         foreach ($sections as $category => $paths) {
             $relativePaths = $this->collectRelativePaths($paths);

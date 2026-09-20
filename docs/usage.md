@@ -475,3 +475,4 @@ extensions:
 * `4` - Found unbounded paths (only with flag `--fail-on-unbounded-paths`)
 * `5` - Extension raised an error (only when an extension activated in the config)
 * `6` - Found stale baseline paths (only with flag `--fail-on-stale-baseline`)
+* `7` - Found deprecated paths (only with flag `--fail-on-deprecated-paths`)

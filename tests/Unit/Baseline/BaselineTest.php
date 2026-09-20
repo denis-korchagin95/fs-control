@@ -42,13 +42,14 @@ class BaselineTest extends TestCase
      */
     public function itShouldExposeAllEntriesGroupedByCategory(): void
     {
-        $baseline = Baseline::fromPaths(['Foo'], ['Bar'], ['Baz']);
+        $baseline = Baseline::fromPaths(['Foo'], ['Bar'], ['Baz'], ['Qux']);
 
         self::assertSame(
             [
                 Baseline::CATEGORY_VIOLATION => ['Foo'],
                 Baseline::CATEGORY_UNCOVERED => ['Bar'],
                 Baseline::CATEGORY_UNBOUNDED => ['Baz'],
+                Baseline::CATEGORY_DEPRECATED => ['Qux'],
             ],
             $baseline->all(),
         );

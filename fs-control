@@ -52,6 +52,7 @@ const CLI_CODE_UNCOVERED_PATHS = 3;
 const CLI_CODE_UNBOUNDED_PATHS = 4;
 const CLI_CODE_EXTENSION_ERROR = 5;
 const CLI_CODE_STALE_BASELINE = 6;
+const CLI_CODE_DEPRECATED_PATHS = 7;
 const VERSION = '1.4.1';
 
 $configFile = null;
@@ -59,12 +60,14 @@ $configFile = null;
 $showUncoveredPaths = false;
 $showUnboundedPaths = false;
 $showOutOfCoveragePaths = false;
+$showDeprecatedPaths = false;
 $showExcludedPaths = false;
 $showExcludedDirs = false;
 $showAllowedPaths = false;
 $showBoundedPaths = false;
 $failOnUncoveredPaths = false;
 $failOnUnboundedPaths = false;
+$failOnDeprecatedPaths = false;
 $isNeedToShowHelp = false;
 $isNeedToShowVersion = false;
 $explain = false;
@@ -99,6 +102,10 @@ foreach ($argv as $index => $argument) {
         $showOutOfCoveragePaths = true;
         continue;
     }
+    if ($argument === '--show-deprecated-paths') {
+        $showDeprecatedPaths = true;
+        continue;
+    }
     if ($argument === '--show-excluded-paths') {
         $showExcludedPaths = true;
         continue;
@@ -121,6 +128,10 @@ foreach ($argv as $index => $argument) {
     }
     if ($argument === '--fail-on-unbounded-paths') {
         $failOnUnboundedPaths = true;
+        continue;
+    }
+    if ($argument === '--fail-on-deprecated-paths') {
+        $failOnDeprecatedPaths = true;
         continue;
     }
     if ($argument === '--explain') {
@@ -172,12 +183,14 @@ Options:
         --show-uncovered-paths        Show uncovered paths (out of rules)
         --show-unbounded-paths        Show unbounded paths (not configured for tool in binding section)
         --show-out-of-coverage-paths  Show out of coverage paths (tolerant mode only)
+        --show-deprecated-paths       Show paths named by a deprecated alias of their rule
         --show-excluded-paths         Show excluded paths
         --show-excluded-dirs          Show excluded dirs
         --show-allowed-paths          Show allowed paths
         --show-bounded-paths          Show bounded paths
         --fail-on-uncovered-paths     Treat uncovered paths as failures
         --fail-on-unbounded-paths     Treat unbounded paths as failures
+        --fail-on-deprecated-paths    Treat deprecated paths as failures
         --explain                     Explains why each path is in its category
         --baseline=FILE               Ignore findings recorded in the baseline file
         --generate-baseline=FILE      Write the current findings to the baseline file and exit
@@ -326,6 +339,23 @@ if (
 }
 
 if (
+    (
+        $showDeprecatedPaths
+        || $failOnDeprecatedPaths
+    )
+    && $result->hasDeprecatedPaths()
+) {
+    fwrite(STDOUT, 'Deprecated Paths:' . PHP_EOL);
+    foreach ($result->getDeprecatedPaths() as $pathInfo) {
+        fwrite(STDOUT, $pathInfo['path'] . PHP_EOL);
+        if ($explain) {
+            fwrite(STDOUT, '  ' . $pathInfo['reason'] . PHP_EOL . PHP_EOL);
+        }
+    }
+    fwrite(STDOUT, PHP_EOL);
+}
+
+if (
     $showOutOfCoveragePaths
     && $result->hasOutOfCoveragePaths()
 ) {
@@ -414,6 +444,9 @@ fwrite(STDOUT, 'Unbounded Paths: ' . $result->getUnboundedPathCount() . PHP_EOL)
 if ($configuration->isTolerantMode()) {
     fwrite(STDOUT, 'Out Of Coverage Paths: ' . $result->getOutOfCoveragePathCount() . PHP_EOL);
 }
+if ($configuration->hasDeprecatedAliases()) {
+    fwrite(STDOUT, 'Deprecated Paths: ' . $result->getDeprecatedPathCount() . PHP_EOL);
+}
 fwrite(STDOUT, 'Excluded Paths: ' . $result->getExcludedPathCount() . PHP_EOL);
 fwrite(STDOUT, 'Excluded Dirs: ' . $result->getExcludedDirCount() . PHP_EOL);
 fwrite(STDOUT, 'Bounded Paths: ' . $result->getBoundedPathCount() . PHP_EOL);
@@ -440,6 +473,13 @@ if (
     && $result->hasUnboundedPaths()
 ) {
     $returnCode = CLI_CODE_UNBOUNDED_PATHS;
+}
+if (
+    $returnCode === CLI_CODE_OK
+    && $failOnDeprecatedPaths
+    && $result->hasDeprecatedPaths()
+) {
+    $returnCode = CLI_CODE_DEPRECATED_PATHS;
 }
 if (
     $returnCode === CLI_CODE_OK

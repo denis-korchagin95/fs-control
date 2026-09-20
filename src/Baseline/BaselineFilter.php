@@ -74,12 +74,23 @@ class BaselineFilter
             $filtered->addUnboundedPath($unboundedPath['path'], $unboundedPath['reason']);
         }
 
+        foreach ($result->getDeprecatedPaths() as $deprecatedPath) {
+            $relativePath = $this->normalizer->toRelative($deprecatedPath['path']);
+            if ($this->baseline->has(Baseline::CATEGORY_DEPRECATED, $relativePath)) {
+                $baselinedPaths[] = ['path' => $deprecatedPath['path'], 'category' => Baseline::CATEGORY_DEPRECATED];
+                $matched[Baseline::CATEGORY_DEPRECATED][$relativePath] = true;
+                continue;
+            }
+            $filtered->addDeprecatedPath($deprecatedPath['path'], $deprecatedPath['reason']);
+        }
+
         // Only core categories are owned by this filter; extension categories are accounted
         // for separately by the extension baseline workflow.
         $coreCategories = [
             Baseline::CATEGORY_VIOLATION,
             Baseline::CATEGORY_UNCOVERED,
             Baseline::CATEGORY_UNBOUNDED,
+            Baseline::CATEGORY_DEPRECATED,
         ];
         /** @var array{path: string, category: string}[] $stalePaths */
         $stalePaths = [];

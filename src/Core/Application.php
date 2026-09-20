@@ -227,9 +227,22 @@ class Application
                 );
                 continue;
             }
+            $ruleName = $pathHandleContext->rule->getName();
+            $usedName = $pathHandleContext->directoryName;
+            if ($usedName !== null && $pathHandleContext->rule->isDeprecatedName($usedName)) {
+                $result->addDeprecatedPath(
+                    $directoryPath,
+                    'The path uses the deprecated name "' . $usedName
+                    . '" of the rule "' . $ruleName . '"',
+                );
+                continue;
+            }
             $result->addAllowedPath(
                 $directoryPath,
-                'The path is allowed by rules',
+                $usedName !== null && $usedName !== $ruleName
+                    ? 'The path is allowed by rules (the alias "' . $usedName
+                        . '" of the rule "' . $ruleName . '")'
+                    : 'The path is allowed by rules',
             );
         }
     }

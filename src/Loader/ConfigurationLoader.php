@@ -19,6 +19,8 @@ use function is_scalar;
 
 class ConfigurationLoader
 {
+    private const RULE_DEFINITION_KEYS = ['groups', 'allowed_aliases', 'deprecated_aliases'];
+
     /**
      * @throws RuleReferToUnknownGroupException
      * @throws ConfigurationLoaderException
@@ -301,25 +303,67 @@ class ConfigurationLoader
      * @throws RuleReferToUnknownGroupException
      * @throws WrongRuleException
      * @throws ConfigurationLoaderException
+     * @throws DuplicateConfigurationEntryException
      */
     private function resolveRules(Configuration $configuration, array $rules): void
     {
-        foreach ($rules as $name => $groups) {
+        foreach ($rules as $name => $definition) {
             if (! is_string($name)) {
                 throw new ConfigurationLoaderException('Each rule name should be a string!');
             }
-            if (! is_array($groups)) {
-                throw new ConfigurationLoaderException('The groups of rule "' . $name . '" should be a list!');
+            if (! is_array($definition)) {
+                throw new ConfigurationLoaderException('The rule "' . $name . '" should be a list or a mapping!');
             }
-            $ruleGroups = [];
-            foreach ($groups as $group) {
-                if (! is_string($group)) {
-                    throw new ConfigurationLoaderException('The groups of rule "' . $name . '" must be strings!');
+            if (array_is_list($definition)) {
+                $configuration->addRule(new Rule($name, $this->assertRuleStrings($name, 'groups', $definition)));
+                continue;
+            }
+            foreach ($definition as $key => $value) {
+                if (! in_array($key, self::RULE_DEFINITION_KEYS, true)) {
+                    throw new ConfigurationLoaderException(
+                        'The unknown key "' . $key . '" of the rule "' . $name . '"! Expected one of: '
+                        . implode(', ', self::RULE_DEFINITION_KEYS) . '.',
+                    );
                 }
-                $ruleGroups[] = $group;
+                if (! is_array($value)) {
+                    throw new ConfigurationLoaderException(
+                        'The "' . $key . '" of the rule "' . $name . '" should be a list!',
+                    );
+                }
             }
-            $configuration->addRule(new Rule($name, $ruleGroups));
+            if (! array_key_exists('groups', $definition)) {
+                throw new ConfigurationLoaderException('The rule "' . $name . '" should have the "groups" key!');
+            }
+            $configuration->addRule(
+                new Rule(
+                    $name,
+                    $this->assertRuleStrings($name, 'groups', $definition['groups']),
+                    $this->assertRuleStrings($name, 'allowed_aliases', $definition['allowed_aliases'] ?? []),
+                    $this->assertRuleStrings($name, 'deprecated_aliases', $definition['deprecated_aliases'] ?? []),
+                ),
+            );
         }
+    }
+
+    /**
+     * @param mixed[] $values
+     *
+     * @return string[]
+     *
+     * @throws ConfigurationLoaderException
+     */
+    private function assertRuleStrings(string $ruleName, string $key, array $values): array
+    {
+        $strings = [];
+        foreach ($values as $value) {
+            if (! is_string($value)) {
+                throw new ConfigurationLoaderException(
+                    'The "' . $key . '" of the rule "' . $ruleName . '" must be strings!',
+                );
+            }
+            $strings[] = $value;
+        }
+        return $strings;
     }
 
     private function resolveBindingPath(string $bindingPath): string

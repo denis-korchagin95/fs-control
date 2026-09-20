@@ -20,11 +20,13 @@ class Baseline
     public const CATEGORY_VIOLATION = 'violations';
     public const CATEGORY_UNCOVERED = 'uncovered';
     public const CATEGORY_UNBOUNDED = 'unbounded';
+    public const CATEGORY_DEPRECATED = 'deprecated';
 
     private const CATEGORIES = [
         self::CATEGORY_VIOLATION,
         self::CATEGORY_UNCOVERED,
         self::CATEGORY_UNBOUNDED,
+        self::CATEGORY_DEPRECATED,
     ];
 
     /**
@@ -39,13 +41,19 @@ class Baseline
      * @param list<string> $violations
      * @param list<string> $uncovered
      * @param list<string> $unbounded
+     * @param list<string> $deprecated
      */
-    public static function fromPaths(array $violations, array $uncovered, array $unbounded): self
-    {
+    public static function fromPaths(
+        array $violations,
+        array $uncovered,
+        array $unbounded,
+        array $deprecated = [],
+    ): self {
         return new self([
             self::CATEGORY_VIOLATION => $violations,
             self::CATEGORY_UNCOVERED => $uncovered,
             self::CATEGORY_UNBOUNDED => $unbounded,
+            self::CATEGORY_DEPRECATED => $deprecated,
         ]);
     }
 
